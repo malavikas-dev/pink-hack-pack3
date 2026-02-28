@@ -13,16 +13,16 @@
 - Member 2: [Vismaya] - [AISAT]
 
 ### Hosted Project Link
-[]
+[ https://malavikas-dev.github.io/pink-hack-pack3/]
 
 ### Project Description
-[2-3 lines about what your project does]
+[QuizBattle AI is a fast-paced browser-based quiz game built with HTML, CSS, and JavaScript. It features 6 categories — Science, History, Tech, Sports, Movies, and Geography — each with 3 difficulty levels. Players answer 10 questions with a 15-second timer per question, earning bonus points for speed and streaks. The game includes a live score tracker, animated feedback, and a detailed results review screen.]
 
 ### The Problem statement
-[What problem are you solving?]
+[Students and casual users lack an engaging, fast-paced way to test their general knowledge across multiple topics in a fun, gamified format.]
 
 ### The Solution
-[How are you solving it?]
+[QuizBattle AI is a browser-based quiz game that challenges users with 10 timed questions across 6 categories and 3 difficulty levels, with a scoring system that rewards speed and streaks.]
 
 ---
 
@@ -31,10 +31,10 @@
 ### Technologies/Components Used
 
 **For Software:**
-- Languages used: [e.g., JavaScript, Python, Java]
-- Frameworks used: [e.g., React, Django, Spring Boot]
-- Libraries used: [e.g., axios, pandas, JUnit]
-- Tools used: [e.g., VS Code, Git, Docker]
+- Languages used: [HTML, CSS, JavaScript]
+- Frameworks used: [ None (Vanilla JS)]
+- Libraries used: [Google Fonts (Bebas Neue, DM Sans)]
+- Tools used: [VS Code, Git, GitHub]
 
 **For Hardware:**
 - Main components: [List main components]
@@ -46,25 +46,46 @@
 ## Features
 
 List the key features of your project:
-- Feature 1: [Description]
-- Feature 2: [Description]
-- Feature 3: [Description]
-- Feature 4: [Description]
+- Feature 1: [6 Categories: Science, History, Tech, Sports, Movies, Geography.Animated UI: Particle background, smooth transitions, responsive design]
+- Feature 2: [3 Difficulty Levels: Easy, Medium, Hard.15-Second Timer: Countdown timer per question with color warnings]
+- Feature 3: [Dynamic Scoring: Bonus points based on speed + streak multiplier
+.Streak Tracker: Visual streak dots + best streak recorded]
+- Feature 4: [Instant Feedback: Toast notifications for correct/wrong answers.Results Review: Full answer breakdown after quiz ends]
 
 ---
 
 ## Implementation
-
+git clone https://github.com/malavikas-dev/pink-hack-pack3.git
 ### For Software:
 
 #### Installation
 ```bash
-[Installation commands - e.g., npm install, pip install -r requirements.txt]
+[git clone https://github.com/malavikas-dev/pink-hack-pack3.git]
 ```
 
 #### Run
-```bash
-[Run commands - e.g., npm start, python app.py]
+[open quiz-battle.html]
+### Application Workflow
+```
+[User Opens App
+      ↓
+Select Category (Science / History / Tech / Sports / Movies / Geography)
+      ↓
+Select Difficulty (Easy / Medium / Hard)
+      ↓
+Click START BATTLE
+      ↓
+10 Questions Loaded (shuffled from question bank)
+      ↓
+Each Question → 15s Timer starts
+      ↓
+User Selects Answer → Instant Feedback Toast
+      ↓
+Score = 100 + (timeLeft × 10) + (streak × 20)
+      ↓
+After 10 Questions → Results Screen
+      ↓
+Review Answers / Play Again / Go Home]
 ```
 
 ### For Hardware:
@@ -361,12 +382,12 @@ python script.py -v --format json data.json
 ## Project Demo
 
 ### Video
-[Add your demo video link here - YouTube, Google Drive, etc.]
+[]
 
 *Explain what the video demonstrates - key features, user flow, technical highlights*
 
 ### Additional Demos
-[Add any extra demo materials/links - Live site, APK download, online demo, etc.]
+[🔗 https://malavikas-dev.github.io/pink-hack-pack3/quiz-battle.html]
 
 ---
 
@@ -374,7 +395,7 @@ python script.py -v --format json data.json
 
 If you used AI tools during development, document them here for transparency:
 
-**Tool Used:** [e.g., GitHub Copilot, v0.dev, Cursor, ChatGPT, Claude]
+**Tool Used:** [ChatGPT]
 
 **Purpose:** [What you used it for]
 - Example: "Generated boilerplate React components"
@@ -382,17 +403,29 @@ If you used AI tools during development, document them here for transparency:
 - Example: "Code review and optimization suggestions"
 
 **Key Prompts Used:**
-- "Create a REST API endpoint for user authentication"
 - "Debug this async function that's causing race conditions"
-- "Optimize this database query for better performance"
 
-**Percentage of AI-generated code:** [Approximately X%]
+**Percentage of AI-generated code:** [35%]
 
 **Human Contributions:**
 - Architecture design and planning
 - Custom business logic implementation
 - Integration and testing
 - UI/UX design decisions
+- Category and difficulty selection
+- Question accuracy verification
+- Scoring formula design
+- Game flow and navigation design
+- Color theme and visual style decisions
+- Timer duration and warning threshold setting
+- GitHub repository setup and management
+- GitHub Pages deployment
+- Filename and structure organization
+- Feature prioritization and scope definition
+- User experience flow testing
+- Performance and load time testing
+- Final project review and quality check
+
 
 *Note: Proper documentation of AI usage demonstrates transparency and earns bonus points in evaluation!*
 
@@ -400,15 +433,14 @@ If you used AI tools during development, document them here for transparency:
 
 ## Team Contributions
 
-- [Name 1]: [Specific contributions - e.g., Frontend development, API integration, etc.]
-- [Name 2]: [Specific contributions - e.g., Backend development, Database design, etc.]
-- [Name 3]: [Specific contributions - e.g., UI/UX design, Testing, Documentation, etc.]
+- [malavika]: [Full project — concept, development, testing, and deployment]
+- [vismaya]: [helps in idea hacking and created the design appearence.]
 
 ---
 
 ## License
 
-This project is licensed under the [LICENSE_NAME] License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License
 
 **Common License Options:**
 - MIT License (Permissive, widely used)
