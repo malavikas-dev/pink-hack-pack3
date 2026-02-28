@@ -2,18 +2,18 @@
   <img src="./img.png" alt="Project Banner" width="100%">
 </p>
 
-# [Project Name] 🎯
+# [Pinkquiz] 🎯
 
 ## Basic Details
 
-### Team Name: [Name]
+### Team Name: [Pink Hack Pack]
 
 ### Team Members
-- Member 1: [Name] - [College]
-- Member 2: [Name] - [College]
+- Member 1: [Malavika] - [AISAT]
+- Member 2: [Vismaya] - [AISAT]
 
 ### Hosted Project Link
-[mention your project hosted link here]
+[]
 
 ### Project Description
 [2-3 lines about what your project does]
