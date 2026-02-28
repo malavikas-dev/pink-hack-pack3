@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QuizBattle AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:      #0d0d0d;
+  --card:    #161616;
+  --border:  #2a2a2a;
+  --text:    #f0f0f0;
+  --muted:   #666;
+  --yellow:  #f5c518;
+  --green:   #22c55e;
+  --red:     #ef4444;
+  --blue:    #3b82f6;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; overflow-x:hidden;
+}
+
+/* ── BACKGROUND ── */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.45}
+
+/* ── APP ── */
+#app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+
+/* ── SCREENS ── */
+.screen{width:100%;max-width:720px;display:none;flex-direction:column;align-items:center;gap:28px}
+.screen.active{display:flex;animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── HOME SCREEN ── */
+.logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3.5rem,10vw,6rem);
+  letter-spacing:3px; line-height:1;
+  text-align:center;
+}
+.logo span{color:var(--yellow); text-shadow:0 0 40px rgba(245,197,24,.5)}
+.tagline{color:var(--muted);font-size:1rem;text-align:center;letter-spacing:.05em}
+
+.category-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:10px; width:100%;
+}
+.cat-btn{
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:12px; padding:18px 12px;
+  cursor:pointer; text-align:center;
+  transition:all .2s; position:relative; overflow:hidden;
+}
+.cat-btn::before{
+  content:''; position:absolute; inset:0;
+  background:var(--cat-color); opacity:0; transition:opacity .2s;
+}
+.cat-btn:hover{border-color:var(--cat-color);transform:translateY(-3px);box-shadow:0 8px 24px -8px var(--cat-color)}
+.cat-btn:hover::before{opacity:.08}
+.cat-btn.selected{border-color:var(--cat-color);box-shadow:0 0 20px -4px var(--cat-color)}
+.cat-btn.selected::before{opacity:.12}
+.cat-icon{font-size:2rem;display:block;margin-bottom:8px;position:relative;z-index:1}
+.cat-name{font-size:.85rem;font-weight:600;position:relative;z-index:1}
+
+.difficulty-row{display:flex;gap:10px;width:100%;justify-content:center;flex-wrap:wrap}
+.diff-btn{
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:8px; padding:10px 24px;
+  cursor:pointer; font-family:'DM Sans',sans-serif;
+  font-size:.9rem; font-weight:600; color:var(--text);
+  transition:all .2s;
+}
+.diff-btn:hover,.diff-btn.selected{border-color:var(--yellow);color:var(--yellow);background:rgba(245,197,24,.06)}
+
+.start-btn{
+  background:var(--yellow); color:#000;
+  border:none; border-radius:12px;
+  padding:16px 48px; font-family:'Bebas Neue',sans-serif;
+  font-size:1.4rem; letter-spacing:2px;
+  cursor:pointer; transition:all .2s;
+  width:100%; max-width:300px;
+}
+.start-btn:hover{transform:scale(1.03);box-shadow:0 8px 32px -8px rgba(245,197,24,.6)}
+.start-btn:active{transform:scale(.98)}
+.start-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ── QUIZ SCREEN ── */
+.quiz-header{width:100%;display:flex;align-items:center;gap:16px}
+.q-category{
+  font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--yellow);background:rgba(245,197,24,.1);
+  border:1px solid rgba(245,197,24,.2);border-radius:6px;padding:4px 12px;
+  white-space:nowrap;
+}
+.progress-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;background:var(--yellow);border-radius:3px;transition:width .4s ease}
+.q-count{font-size:.8rem;color:var(--muted);white-space:nowrap}
+
+/* TIMER */
+.timer-ring{position:relative;width:54px;height:54px;flex-shrink:0}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring circle{transition:stroke-dashoffset .9s linear;stroke-linecap:round}
+.timer-num{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:1.2rem;
+}
+
+/* QUESTION CARD */
+.q-card{
+  width:100%; background:var(--card);
+  border:1px solid var(--border); border-radius:20px;
+  padding:32px 28px;
+}
+.q-text{font-size:1.25rem;font-weight:500;line-height:1.5;margin-bottom:28px}
+
+.options{display:flex;flex-direction:column;gap:10px}
+.option{
+  background:var(--bg); border:1.5px solid var(--border);
+  border-radius:12px; padding:14px 20px;
+  cursor:pointer; font-size:.95rem; font-weight:500;
+  display:flex; align-items:center; gap:14px;
+  transition:all .18s; position:relative; overflow:hidden;
+  text-align:left;
+}
+.option::before{
+  content:''; position:absolute; inset:0;
+  background:var(--yellow); opacity:0; transition:opacity .18s;
+}
+.option:hover:not(.locked){border-color:rgba(245,197,24,.4);transform:translateX(4px)}
+.option:hover:not(.locked)::before{opacity:.04}
+.opt-letter{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--border); display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1px;
+  flex-shrink:0; position:relative; z-index:1;transition:all .18s;
+}
+.opt-text{position:relative;z-index:1;flex:1}
+.opt-icon{margin-left:auto;font-size:1.1rem;position:relative;z-index:1;opacity:0;transition:opacity .2s}
+
+.option.correct{border-color:var(--green)!important;background:rgba(34,197,94,.08)!important}
+.option.correct .opt-letter{background:var(--green);color:#000}
+.option.correct .opt-icon{opacity:1}
+.option.wrong{border-color:var(--red)!important;background:rgba(239,68,68,.08)!important}
+.option.wrong .opt-letter{background:var(--red);color:#fff}
+.option.wrong .opt-icon{opacity:1}
+.option.locked{cursor:not-allowed;opacity:.6}
+.option.locked:not(.correct):not(.wrong){opacity:.45}
+
+/* STREAK */
+.streak-bar{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:10px 18px;width:100%;
+}
+.streak-label{font-size:.8rem;color:var(--muted);font-weight:500}
+.streak-dots{display:flex;gap:5px;flex:1}
+.streak-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--border);transition:all .3s;
+}
+.streak-dot.hit{background:var(--yellow);box-shadow:0 0 8px rgba(245,197,24,.6)}
+.streak-dot.miss{background:var(--red)}
+.score-live{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--yellow);letter-spacing:1px}
+
+/* FEEDBACK TOAST */
+#feedback-toast{
+  position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:12px 24px;font-weight:600;font-size:.95rem;
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:999;white-space:nowrap;pointer-events:none;
+}
+#feedback-toast.show{transform:translateX(-50%) translateY(0)}
+#feedback-toast.correct-toast{border-color:var(--green);color:var(--green)}
+#feedback-toast.wrong-toast{border-color:var(--red);color:var(--red)}
+
+/* ── RESULT SCREEN ── */
+.result-hero{text-align:center}
+.result-emoji{font-size:4rem;display:block;margin-bottom:12px;animation:bounce 1s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+.result-title{font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:2px}
+.result-score{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:5rem;color:var(--yellow);letter-spacing:2px;
+  text-shadow:0 0 40px rgba(245,197,24,.4);line-height:1;
+}
+.result-sub{color:var(--muted);font-size:1rem;margin-top:4px}
+
+.result-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:12px;width:100%;
+}
+.stat-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:20px 16px;text-align:center;
+}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:1px}
+.stat-label{font-size:.75rem;color:var(--muted);margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
+
+.result-review{width:100%;display:flex;flex-direction:column;gap:8px}
+.review-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:14px 18px;display:flex;gap:12px;align-items:flex-start;
+}
+.review-icon{font-size:1.1rem;flex-shrink:0;margin-top:2px}
+.review-q{font-size:.88rem;color:var(--muted);line-height:1.5}
+.review-a{font-size:.9rem;font-weight:600;margin-top:3px}
+.review-a.correct-a{color:var(--green)}
+.review-a.wrong-a{color:var(--red)}
+
+.btn-row{display:flex;gap:12px;width:100%;flex-wrap:wrap}
+.btn-secondary{
+  flex:1;background:var(--card);border:1.5px solid var(--border);
+  border-radius:12px;padding:14px;font-family:'DM Sans',sans-serif;
+  font-size:.95rem;font-weight:600;color:var(--text);cursor:pointer;
+  transition:all .2s;min-width:120px;
+}
+.btn-secondary:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* RESPONSIVE */
+@media(max-width:500px){
+  .result-stats{grid-template-columns:repeat(3,1fr)}
+  .q-text{font-size:1.05rem}
+  .category-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="app">
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="logo">QUIZ<span>BATTLE</span></div>
+    <p class="tagline">10 questions. 15 seconds each. Can you beat your brain?</p>
+
+    <div style="width:100%">
+      <p style="font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px;font-weight:600">Choose Category</p>
+      <div class="category-grid" id="cat-grid"></div>
+    </div>
+
+    <div style="width:100%">
+      <p style="font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px;font-weight:600">Difficulty</p>
+      <div class="difficulty-row" id="diff-row"></div>
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="startQuiz()" disabled>START BATTLE</button>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="screen-quiz">
+    <div class="quiz-header">
+      <span class="q-category" id="q-cat-label">Science</span>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+      <span class="q-count" id="q-count">1 / 10</span>
+      <div class="timer-ring">
+        <svg width="54" height="54" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="22" fill="none" stroke="#2a2a2a" stroke-width="4"/>
+          <circle id="timer-circle" cx="27" cy="27" r="22" fill="none"
+            stroke="#f5c518" stroke-width="4"
+            stroke-dasharray="138.2" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-num" id="timer-num">15</div>
+      </div>
+    </div>
+
+    <div class="streak-bar">
+      <span class="streak-label">STREAK</span>
+      <div class="streak-dots" id="streak-dots"></div>
+      <span class="score-live" id="score-live">0</span>
+    </div>
+
+    <div class="q-card">
+      <div class="q-text" id="q-text">Loading question...</div>
+      <div class="options" id="options"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen" id="screen-result">
+    <div class="result-hero">
+      <span class="result-emoji" id="result-emoji">🏆</span>
+      <div class="result-title" id="result-title">GREAT JOB!</div>
+      <div class="result-score" id="result-score">0</div>
+      <div class="result-sub" id="result-sub">points scored</div>
+    </div>
+
+    <div class="result-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-correct" style="color:var(--green)">0</div>
+        <div class="stat-label">Correct</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-wrong" style="color:var(--red)">0</div>
+        <div class="stat-label">Wrong</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-streak" style="color:var(--yellow)">0</div>
+        <div class="stat-label">Best Streak</div>
+      </div>
+    </div>
+
+    <div style="width:100%">
+      <p style="font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:12px;font-weight:600">Review Answers</p>
+      <div class="result-review" id="result-review"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="goHome()">🏠 Home</button>
+      <button class="start-btn" style="flex:1;max-width:none" onclick="restartQuiz()">PLAY AGAIN</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="feedback-toast"></div>
+
+<script>
+// ── CATEGORIES ──
+var CATEGORIES = [
+  { id:'science',  name:'Science',   icon:'🔬', color:'#3b82f6' },
+  { id:'history',  name:'History',   icon:'📜', color:'#f59e0b' },
+  { id:'tech',     name:'Tech',      icon:'💻', color:'#8b5cf6' },
+  { id:'sports',   name:'Sports',    icon:'⚽', color:'#22c55e' },
+  { id:'movies',   name:'Movies',    icon:'🎬', color:'#ef4444' },
+  { id:'geography',name:'Geography', icon:'🌍', color:'#06b6d4' },
+];
+
+var DIFFICULTIES = ['Easy','Medium','Hard'];
+
+// ── QUESTION BANK ──
+var QB = {
+  science: {
+    Easy: [
+      { q:"What planet is closest to the Sun?", opts:["Mercury","Venus","Earth","Mars"], ans:0 },
+      { q:"What gas do plants absorb from the air?", opts:["Oxygen","Nitrogen","Carbon Dioxide","Hydrogen"], ans:2 },
+      { q:"How many legs does a spider have?", opts:["6","8","10","12"], ans:1 },
+      { q:"What is the chemical symbol for water?", opts:["WO","H2O","HO2","W2O"], ans:1 },
+      { q:"What is the center of an atom called?", opts:["Electron","Proton","Nucleus","Neutron"], ans:2 },
+      { q:"What organ pumps blood around the body?", opts:["Lungs","Liver","Kidney","Heart"], ans:3 },
+      { q:"How many bones are in the adult human body?", opts:["106","206","306","406"], ans:1 },
+      { q:"What is the boiling point of water in Celsius?", opts:["90°","95°","100°","105°"], ans:2 },
+      { q:"What force keeps us on the ground?", opts:["Magnetism","Friction","Gravity","Tension"], ans:2 },
+      { q:"What is the largest organ in the human body?", opts:["Brain","Liver","Heart","Skin"], ans:3 },
+    ],
+    Medium: [
+      { q:"What is the speed of light in a vacuum (approx)?", opts:["300,000 km/s","150,000 km/s","450,000 km/s","600,000 km/s"], ans:0 },
+      { q:"What particle has a negative charge?", opts:["Proton","Neutron","Electron","Positron"], ans:2 },
+      { q:"What is the powerhouse of the cell?", opts:["Nucleus","Ribosome","Mitochondria","Golgi body"], ans:2 },
+      { q:"What is the atomic number of Carbon?", opts:["4","6","8","12"], ans:1 },
+      { q:"Which planet has the most moons?", opts:["Jupiter","Saturn","Uranus","Neptune"], ans:1 },
+      { q:"What is the SI unit of electric current?", opts:["Volt","Watt","Ohm","Ampere"], ans:3 },
+      { q:"DNA stands for?", opts:["Deoxyribonucleic Acid","Diribonucleic Acid","Dioxyribose Nucleic Acid","Dualribonucleic Acid"], ans:0 },
+      { q:"What type of bond holds water molecules together?", opts:["Ionic","Covalent","Hydrogen","Metallic"], ans:1 },
+      { q:"What is the hardest natural substance?", opts:["Gold","Iron","Diamond","Quartz"], ans:2 },
+      { q:"The study of fungi is called?", opts:["Botany","Mycology","Zoology","Ecology"], ans:1 },
+    ],
+    Hard: [
+      { q:"What is the Heisenberg Uncertainty Principle about?", opts:["Speed of light","Position & momentum","Wave frequency","Atomic mass"], ans:1 },
+      { q:"What is the half-life of Carbon-14?", opts:["1,730 years","5,730 years","17,300 years","573 years"], ans:1 },
+      { q:"Which enzyme unwinds DNA during replication?", opts:["Ligase","Polymerase","Helicase","Primase"], ans:2 },
+      { q:"What is the Chandrasekhar limit?", opts:["Max mass of a white dwarf","Speed of a neutron star","Size of a black hole","Energy of a quasar"], ans:0 },
+      { q:"What is the pH of a neutral solution at 25°C?", opts:["6","7","8","7.4"], ans:1 },
+      { q:"Schrödinger's equation describes?", opts:["Quantum state evolution","Relativistic mass","Entropy change","Electromagnetic field"], ans:0 },
+      { q:"What is the valence of Sulfur in H2SO4?", opts:["+2","+4","+6","+8"], ans:2 },
+      { q:"The law of conservation of energy was formulated by?", opts:["Newton","Joule","Helmholtz","Faraday"], ans:2 },
+      { q:"What is a quark's color charge not called?", opts:["Red","Blue","Green","Yellow"], ans:3 },
+      { q:"CRISPR-Cas9 is primarily used for?", opts:["Protein synthesis","Gene editing","Cell division","DNA sequencing"], ans:1 },
+    ]
+  },
+  history: {
+    Easy: [
+      { q:"Who was the first President of the USA?", opts:["Lincoln","Jefferson","Washington","Adams"], ans:2 },
+      { q:"In which year did World War II end?", opts:["1943","1944","1945","1946"], ans:2 },
+      { q:"The Great Wall of China was built to protect against?", opts:["Floods","Mongol invasions","Earthquakes","Rival dynasties"], ans:1 },
+      { q:"Who discovered America in 1492?", opts:["Vasco da Gama","Columbus","Magellan","Drake"], ans:1 },
+      { q:"Which empire was ruled by Julius Caesar?", opts:["Greek","Ottoman","Roman","Persian"], ans:2 },
+      { q:"The Eiffel Tower is located in which city?", opts:["Rome","London","Berlin","Paris"], ans:3 },
+      { q:"Who painted the Mona Lisa?", opts:["Michelangelo","Raphael","Da Vinci","Rembrandt"], ans:2 },
+      { q:"The French Revolution began in which year?", opts:["1769","1779","1789","1799"], ans:2 },
+      { q:"Who was the first man to walk on the moon?", opts:["Buzz Aldrin","Neil Armstrong","Yuri Gagarin","John Glenn"], ans:1 },
+      { q:"The ancient city of Troy was located in modern-day?", opts:["Greece","Italy","Turkey","Egypt"], ans:2 },
+    ],
+    Medium: [
+      { q:"Which country gifted the Statue of Liberty to the USA?", opts:["Britain","France","Germany","Spain"], ans:1 },
+      { q:"The Berlin Wall fell in which year?", opts:["1987","1988","1989","1990"], ans:2 },
+      { q:"Who wrote 'The Communist Manifesto'?", opts:["Lenin","Stalin","Marx & Engels","Trotsky"], ans:2 },
+      { q:"The Battle of Waterloo was fought in?", opts:["1812","1815","1818","1820"], ans:1 },
+      { q:"Which pharaoh built the Great Pyramid of Giza?", opts:["Ramesses II","Tutankhamun","Khufu","Cleopatra"], ans:2 },
+      { q:"The Magna Carta was signed in?", opts:["1015","1115","1215","1315"], ans:2 },
+      { q:"Who was the first Emperor of China?", opts:["Qin Shi Huang","Han Wudi","Tang Taizong","Ming Hongwu"], ans:0 },
+      { q:"The Cold War was primarily between which two nations?", opts:["USA & China","USA & USSR","UK & USSR","USA & Germany"], ans:1 },
+      { q:"The Renaissance began in which country?", opts:["France","Spain","Germany","Italy"], ans:3 },
+      { q:"Who was the last Tsar of Russia?", opts:["Alexander III","Nicholas II","Ivan IV","Peter I"], ans:1 },
+    ],
+    Hard: [
+      { q:"The Treaty of Westphalia (1648) ended which war?", opts:["100 Years War","30 Years War","7 Years War","Napoleonic Wars"], ans:1 },
+      { q:"Which civilization built Machu Picchu?", opts:["Aztec","Maya","Inca","Olmec"], ans:2 },
+      { q:"The Peloponnesian War was between?", opts:["Rome & Carthage","Athens & Sparta","Persia & Greece","Egypt & Nubia"], ans:1 },
+      { q:"Who was the first female Pharaoh of Egypt?", opts:["Cleopatra","Nefertiti","Hatshepsut","Nefertari"], ans:2 },
+      { q:"The Scramble for Africa primarily occurred in?", opts:["1750s","1800s","1880s","1920s"], ans:2 },
+      { q:"Which empire was known as the 'Sick Man of Europe'?", opts:["Austro-Hungarian","Russian","Ottoman","British"], ans:2 },
+      { q:"The Meiji Restoration was in which country?", opts:["China","Korea","Japan","Vietnam"], ans:2 },
+      { q:"Who coined the term 'Industrial Revolution'?", opts:["Karl Marx","Arnold Toynbee","Adam Smith","Engels"], ans:1 },
+      { q:"The Haitian Revolution succeeded in?", opts:["1798","1801","1804","1807"], ans:2 },
+      { q:"The Battle of Thermopylae was fought in?", opts:["490 BC","480 BC","470 BC","460 BC"], ans:1 },
+    ]
+  },
+  tech: {
+    Easy: [
+      { q:"What does 'CPU' stand for?", opts:["Core Processing Unit","Central Processing Unit","Computer Processing Unit","Central Program Utility"], ans:1 },
+      { q:"What does 'HTTP' stand for?", opts:["HyperText Transfer Protocol","High Transfer Text Program","HyperText Transmission Program","High Text Transfer Protocol"], ans:0 },
+      { q:"Which company makes the iPhone?", opts:["Google","Samsung","Apple","Microsoft"], ans:2 },
+      { q:"What programming language is used for web styling?", opts:["Java","Python","CSS","HTML"], ans:2 },
+      { q:"What does 'RAM' stand for?", opts:["Read Access Memory","Random Access Memory","Rapid Access Module","Read All Memory"], ans:1 },
+      { q:"Which search engine has the most users globally?", opts:["Bing","Yahoo","DuckDuckGo","Google"], ans:3 },
+      { q:"What does 'URL' stand for?", opts:["Uniform Resource Locator","Universal Remote Link","Unified Routing Language","Universal Resource Loader"], ans:0 },
+      { q:"What is the most used programming language in 2024?", opts:["Python","JavaScript","Java","C++"], ans:1 },
+      { q:"Wi-Fi is a type of?", opts:["Wired network","Wireless network","Satellite network","Bluetooth network"], ans:1 },
+      { q:"What does 'OS' stand for in computing?", opts:["Online System","Operating System","Output Storage","Open Software"], ans:1 },
+    ],
+    Medium: [
+      { q:"What does 'API' stand for?", opts:["Application Programming Interface","Applied Program Integration","Automated Processing Interface","Application Protocol Integration"], ans:0 },
+      { q:"What is the time complexity of binary search?", opts:["O(n)","O(n²)","O(log n)","O(1)"], ans:2 },
+      { q:"Which protocol is used to send emails?", opts:["FTP","HTTP","SMTP","SSH"], ans:2 },
+      { q:"What does 'SQL' stand for?", opts:["Structured Query Language","System Query Logic","Sequential Query Language","Structured Question Logic"], ans:0 },
+      { q:"Git was created by?", opts:["Bill Gates","Linus Torvalds","Dennis Ritchie","Mark Zuckerberg"], ans:1 },
+      { q:"What is a 'blockchain'?", opts:["A type of CPU","A decentralized ledger","A programming language","A database format"], ans:1 },
+      { q:"Which data structure uses LIFO?", opts:["Queue","Array","Stack","Tree"], ans:2 },
+      { q:"What does 'DNS' stand for?", opts:["Data Network System","Domain Name System","Digital Node Server","Data Naming Service"], ans:1 },
+      { q:"Python was created by?", opts:["James Gosling","Guido van Rossum","Brendan Eich","Dennis Ritchie"], ans:1 },
+      { q:"What is the base of binary numbers?", opts:["8","10","2","16"], ans:2 },
+    ],
+    Hard: [
+      { q:"What is a Turing-complete system?", opts:["A system that passes the Turing test","A system that can simulate any Turing machine","A quantum computing system","An AI-based system"], ans:1 },
+      { q:"What does CAP theorem state?", opts:["Consistency, Availability, Partition tolerance can't all be guaranteed simultaneously","CPU, API, Protocol design rules","Code, Algorithm, Performance metrics","Cache, Address, Pointer management"], ans:0 },
+      { q:"What is the purpose of a mutex?", opts:["Memory allocation","Thread synchronization","Network routing","Data encryption"], ans:1 },
+      { q:"What is memoization?", opts:["Caching function results","Memory management","RAM optimization","Recursive loop technique"], ans:0 },
+      { q:"SHA-256 is a type of?", opts:["Encryption algorithm","Hashing algorithm","Compression algorithm","Sorting algorithm"], ans:1 },
+      { q:"What does CORS stand for?", opts:["Cross-Origin Resource Sharing","Client Object Rendering Service","Code Object Routing System","Cross-Origin Request Service"], ans:0 },
+      { q:"What is the difference between TCP and UDP?", opts:["Speed vs security","Reliability vs speed","Wired vs wireless","IPv4 vs IPv6"], ans:1 },
+      { q:"What is a 'race condition'?", opts:["A CPU speed benchmark","Behavior depending on thread timing","A network latency issue","A memory overflow error"], ans:1 },
+      { q:"In machine learning, overfitting means?", opts:["Model underfits training data","Model performs well on training but poorly on new data","Model is too simple","Model ignores features"], ans:1 },
+      { q:"What is O(1) space complexity?", opts:["Linear space","Constant space","Logarithmic space","Quadratic space"], ans:1 },
+    ]
+  },
+  sports: {
+    Easy: [
+      { q:"How many players are on a standard football (soccer) team?", opts:["9","10","11","12"], ans:2 },
+      { q:"In which sport do you use a shuttlecock?", opts:["Tennis","Badminton","Squash","Pickleball"], ans:1 },
+      { q:"How many rings are on the Olympic flag?", opts:["4","5","6","7"], ans:1 },
+      { q:"In basketball, how many points is a free throw worth?", opts:["1","2","3","4"], ans:0 },
+      { q:"Which country invented cricket?", opts:["Australia","India","England","South Africa"], ans:2 },
+      { q:"A standard tennis match is played to how many sets (men's Grand Slam)?", opts:["3","4","5","6"], ans:2 },
+      { q:"In which sport is the 'Tour de France' held?", opts:["Running","Swimming","Cycling","Triathlon"], ans:2 },
+      { q:"How many holes are in a standard golf course?", opts:["9","12","18","24"], ans:2 },
+      { q:"In which country were the first modern Olympics held?", opts:["France","USA","Greece","Italy"], ans:2 },
+      { q:"What color is the center of an archery target?", opts:["Red","Blue","Black","Yellow/Gold"], ans:3 },
+    ],
+    Medium: [
+      { q:"Who holds the record for most Olympic gold medals?", opts:["Usain Bolt","Michael Phelps","Carl Lewis","Mark Spitz"], ans:1 },
+      { q:"What is the maximum score in a single bowling frame?", opts:["10","20","30","40"], ans:2 },
+      { q:"In cricket, what is a 'duck'?", opts:["A caught-behind dismissal","Scoring 0 runs","A no-ball delivery","A wide delivery"], ans:1 },
+      { q:"How long is a marathon?", opts:["26.2 km","42.195 km","40 km","38.5 km"], ans:1 },
+      { q:"Which team has won the most FIFA World Cups?", opts:["Germany","Argentina","France","Brazil"], ans:3 },
+      { q:"In tennis, what is a 'bagel'?", opts:["An ace serve","Winning a set 6-0","Double fault","A let serve"], ans:1 },
+      { q:"The Ryder Cup is associated with which sport?", opts:["Tennis","Cricket","Golf","Polo"], ans:2 },
+      { q:"What does 'LBW' stand for in cricket?", opts:["Left Bat Wicket","Leg Before Wicket","Left Behind Wicket","Leg Behind Wicket"], ans:1 },
+      { q:"Which country has won the most Rugby World Cups?", opts:["England","Australia","South Africa","New Zealand"], ans:3 },
+      { q:"What is the diameter of a basketball hoop (inches)?", opts:["16","18","20","22"], ans:1 },
+    ],
+    Hard: [
+      { q:"What is the Fosbury Flop technique used in?", opts:["Pole vault","Long jump","High jump","Triple jump"], ans:2 },
+      { q:"In chess, what is 'en passant'?", opts:["A checkmate technique","A special pawn capture","A castling move","A queen sacrifice"], ans:1 },
+      { q:"The 'Miracle on Ice' in 1980 involved USA vs?", opts:["Canada","Sweden","Finland","USSR"], ans:3 },
+      { q:"What is the distance of a standard triathlon swim?", opts:["750m","1500m","2000m","3000m"], ans:1 },
+      { q:"In F1, what does DRS stand for?", opts:["Drag Reduction System","Dynamic Racing Speed","Drive Response System","Directional Racing Setup"], ans:0 },
+      { q:"The 'Hand of God' goal was scored by?", opts:["Pele","Ronaldo","Maradona","Zidane"], ans:2 },
+      { q:"In baseball, what is a 'perfect game'?", opts:["No runs scored","No hits allowed","No batter reaches base","Striking out all 27 batters"], ans:2 },
+      { q:"Who invented the modern scoring system in squash?", opts:["British Open Committee","World Squash Federation","Pakistani Squash Federation","Jahangir Khan"], ans:1 },
+      { q:"What is the weight of a standard shot put for men (Olympic)?", opts:["5kg","6kg","7.26kg","8kg"], ans:2 },
+      { q:"Which country won the first FIFA World Cup in 1930?", opts:["Brazil","Argentina","Uruguay","Italy"], ans:2 },
+    ]
+  },
+  movies: {
+    Easy: [
+      { q:"Who directed 'Jurassic Park'?", opts:["James Cameron","Christopher Nolan","Steven Spielberg","George Lucas"], ans:2 },
+      { q:"What studio made the 'Toy Story' films?", opts:["DreamWorks","Disney","Pixar","Universal"], ans:2 },
+      { q:"In 'The Lion King', what is Simba's father's name?", opts:["Scar","Mufasa","Zazu","Rafiki"], ans:1 },
+      { q:"Which film features the quote 'I'll be back'?", opts:["RoboCop","Predator","The Terminator","Total Recall"], ans:2 },
+      { q:"In 'Finding Nemo', what type of fish is Nemo?", opts:["Blue tang","Swordfish","Clownfish","Goldfish"], ans:2 },
+      { q:"Who played Iron Man in the MCU?", opts:["Chris Evans","Chris Hemsworth","Robert Downey Jr.","Mark Ruffalo"], ans:2 },
+      { q:"'Titanic' (1997) was directed by?", opts:["Spielberg","Cameron","Scott","Nolan"], ans:1 },
+      { q:"What is the highest-grossing film of all time (adjusted)?", opts:["Avatar","Avengers: Endgame","Gone with the Wind","Titanic"], ans:2 },
+      { q:"In 'Harry Potter', what is Harry's owl named?", opts:["Hedwig","Errol","Pigwidgeon","Crookshanks"], ans:0 },
+      { q:"Who voiced Shrek in the animated film?", opts:["Jim Carrey","Eddie Murphy","Mike Myers","Will Smith"], ans:2 },
+    ],
+    Medium: [
+      { q:"What film won Best Picture at the 2020 Oscars?", opts:["1917","Joker","Parasite","Once Upon a Time in Hollywood"], ans:2 },
+      { q:"Who directed 'Pulp Fiction'?", opts:["Martin Scorsese","David Fincher","Quentin Tarantino","Joel Coen"], ans:2 },
+      { q:"In 'The Matrix', what color pill does Neo take?", opts:["Blue","Green","Red","Yellow"], ans:2 },
+      { q:"What is the name of the whale in 'Pinocchio'?", opts:["Monstro","Jaws","Leviathan","Goliath"], ans:0 },
+      { q:"Which actor played Hannibal Lecter in 'Silence of the Lambs'?", opts:["Gary Oldman","Anthony Hopkins","Kevin Spacey","Ian McKellen"], ans:1 },
+      { q:"'2001: A Space Odyssey' was directed by?", opts:["Ridley Scott","George Lucas","Stanley Kubrick","Steven Spielberg"], ans:2 },
+      { q:"In 'Inception', what is a 'totem' used for?", opts:["Time travel","Waking up","Reality check","Dream entry"], ans:2 },
+      { q:"Who played The Joker in 'The Dark Knight'?", opts:["Jack Nicholson","Jared Leto","Joaquin Phoenix","Heath Ledger"], ans:3 },
+      { q:"What year was 'Star Wars: A New Hope' released?", opts:["1975","1976","1977","1978"], ans:2 },
+      { q:"The film 'Spirited Away' was made by which studio?", opts:["Toei Animation","Madhouse","Studio Ghibli","Gainax"], ans:2 },
+    ],
+    Hard: [
+      { q:"Who won the Best Director Oscar for 'Schindler's List'?", opts:["James Cameron","Martin Scorsese","Steven Spielberg","Francis Ford Coppola"], ans:2 },
+      { q:"What is the final word spoken in 'Citizen Kane'?", opts:["Alone","Rosebud","Money","Mother"], ans:1 },
+      { q:"'La Dolce Vita' was directed by?", opts:["Visconti","Antonioni","Fellini","De Sica"], ans:2 },
+      { q:"In 'Blade Runner', what are replicants?", opts:["Robots","AI programs","Bioengineered humans","Clones"], ans:2 },
+      { q:"The 'Kuleshov Effect' in cinema refers to?", opts:["Camera movement","Montage juxtaposition","Sound design","Color grading"], ans:1 },
+      { q:"What Hitchcock film was based on a real murder case?", opts:["Psycho","Rope","Vertigo","Rear Window"], ans:1 },
+      { q:"Who composed the score for 'Schindler's List'?", opts:["Hans Zimmer","Ennio Morricone","John Williams","Howard Shore"], ans:2 },
+      { q:"'Seven Samurai' was directed by?", opts:["Yasujiro Ozu","Kenji Mizoguchi","Akira Kurosawa","Hiroshi Inagaki"], ans:2 },
+      { q:"What film features the 'shower scene' cut to 78 pieces of film?", opts:["The Birds","Vertigo","Psycho","Rear Window"], ans:2 },
+      { q:"The Palme d'Or is awarded at which festival?", opts:["Venice","Berlin","Cannes","Toronto"], ans:2 },
+    ]
+  },
+  geography: {
+    Easy: [
+      { q:"What is the capital of Australia?", opts:["Sydney","Melbourne","Brisbane","Canberra"], ans:3 },
+      { q:"Which is the largest ocean?", opts:["Atlantic","Indian","Arctic","Pacific"], ans:3 },
+      { q:"How many continents are there on Earth?", opts:["5","6","7","8"], ans:2 },
+      { q:"What is the longest river in the world?", opts:["Amazon","Mississippi","Nile","Yangtze"], ans:2 },
+      { q:"Which country has the most natural lakes?", opts:["Russia","USA","Brazil","Canada"], ans:3 },
+      { q:"Mount Everest is in which mountain range?", opts:["Andes","Alps","Rockies","Himalayas"], ans:3 },
+      { q:"What is the capital of Japan?", opts:["Osaka","Kyoto","Hiroshima","Tokyo"], ans:3 },
+      { q:"Which country is the largest by area?", opts:["China","USA","Canada","Russia"], ans:3 },
+      { q:"The Amazon Rainforest is primarily in which country?", opts:["Colombia","Peru","Venezuela","Brazil"], ans:3 },
+      { q:"What is the smallest country in the world?", opts:["Monaco","San Marino","Vatican City","Liechtenstein"], ans:2 },
+    ],
+    Medium: [
+      { q:"What is the capital of Canada?", opts:["Toronto","Vancouver","Ottawa","Montreal"], ans:2 },
+      { q:"Which desert is the largest in the world?", opts:["Gobi","Sahara","Arabian","Antarctic"], ans:3 },
+      { q:"The Strait of Malacca separates which two landmasses?", opts:["India & Sri Lanka","Sumatra & Malay Peninsula","Java & Borneo","Thailand & Myanmar"], ans:1 },
+      { q:"What is the deepest lake in the world?", opts:["Caspian Sea","Lake Superior","Lake Baikal","Lake Tanganyika"], ans:2 },
+      { q:"Which country has the most time zones?", opts:["Russia","USA","China","France"], ans:3 },
+      { q:"The Atacama Desert is in which continent?", opts:["Africa","Asia","North America","South America"], ans:3 },
+      { q:"What country has the longest coastline?", opts:["Russia","Australia","Norway","Canada"], ans:3 },
+      { q:"The Suez Canal connects which two bodies of water?", opts:["Red Sea & Indian Ocean","Mediterranean & Red Sea","Black Sea & Caspian","Persian Gulf & Arabian Sea"], ans:1 },
+      { q:"Which city lies on two continents?", opts:["Moscow","Cairo","Dubai","Istanbul"], ans:3 },
+      { q:"What is the highest navigable lake in the world?", opts:["Lake Titicaca","Lake Baikal","Crater Lake","Dead Sea"], ans:0 },
+    ],
+    Hard: [
+      { q:"The Mariana Trench is in which ocean?", opts:["Atlantic","Indian","Pacific","Arctic"], ans:2 },
+      { q:"What percentage of Earth's surface is covered by water?", opts:["61%","71%","81%","51%"], ans:1 },
+      { q:"The Fertile Crescent spans parts of which modern countries?", opts:["Iran, Iraq, Syria, Turkey, Jordan","Egypt, Libya, Algeria","India, Pakistan, Bangladesh","Saudi Arabia, UAE, Kuwait"], ans:0 },
+      { q:"What is the name of the tectonic plate under the Pacific Ocean?", opts:["North American Plate","Eurasian Plate","Pacific Plate","Indo-Australian Plate"], ans:2 },
+      { q:"Which African country has the most pyramids?", opts:["Egypt","Libya","Ethiopia","Sudan"], ans:3 },
+      { q:"The Coriolis effect influences?", opts:["Tidal waves","Ocean currents & wind patterns","Earthquake zones","Volcanic eruptions"], ans:1 },
+      { q:"What is the term for a map projection that preserves shape?", opts:["Equal-area","Conformal","Equidistant","Azimuthal"], ans:1 },
+      { q:"The Drake Passage connects which two oceans?", opts:["Atlantic & Indian","Pacific & Indian","Atlantic & Pacific","Arctic & Atlantic"], ans:2 },
+      { q:"What is the only sea without a land boundary?", opts:["Red Sea","Caspian Sea","Sargasso Sea","Coral Sea"], ans:2 },
+      { q:"Which country is home to the most UNESCO World Heritage Sites?", opts:["China","India","France","Italy"], ans:3 },
+    ]
+  }
+};
+
+// ── STATE ──
+var selCat = null, selDiff = 'Medium';
+var qList = [], qIdx = 0, score = 0;
+var streak = 0, bestStreak = 0, streakHistory = [];
+var correctCount = 0, wrongCount = 0;
+var timerInterval = null, timeLeft = 15;
+var answered = false;
+var reviewData = [];
+
+// ── CANVAS BG ──
+(function() {
+  var canvas = document.getElementById('bg-canvas');
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  for (var i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + .5,
+      dx: (Math.random() - .5) * .3,
+      dy: (Math.random() - .5) * .3,
+      o: Math.random() * .5 + .1
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(function(p) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(245,197,24,' + p.o + ')';
+      ctx.fill();
+      p.x += p.dx; p.y += p.dy;
+      if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── RENDER HOME ──
+(function renderHome() {
+  var cg = document.getElementById('cat-grid');
+  var html = '';
+  CATEGORIES.forEach(function(c) {
+    html += '<button class="cat-btn" style="--cat-color:' + c.color + '" onclick="selectCat(\'' + c.id + '\')" id="cat-' + c.id + '">' +
+      '<span class="cat-icon">' + c.icon + '</span>' +
+      '<div class="cat-name">' + c.name + '</div>' +
+      '</button>';
+  });
+  cg.innerHTML = html;
+
+  var dr = document.getElementById('diff-row');
+  html = '';
+  DIFFICULTIES.forEach(function(d) {
+    html += '<button class="diff-btn' + (d === selDiff ? ' selected' : '') + '" onclick="selectDiff(\'' + d + '\')">' + d + '</button>';
+  });
+  dr.innerHTML = html;
+})();
+
+function selectCat(id) {
+  selCat = id;
+  document.querySelectorAll('.cat-btn').forEach(function(b){ b.classList.remove('selected'); });
+  document.getElementById('cat-' + id).classList.add('selected');
+  document.getElementById('start-btn').disabled = false;
+}
+
+function selectDiff(d) {
+  selDiff = d;
+  document.querySelectorAll('.diff-btn').forEach(function(b){ b.classList.remove('selected'); });
+  event.target.classList.add('selected');
+}
+
+// ── START ──
+function startQuiz() {
+  if (!selCat) return;
+  var pool = QB[selCat][selDiff];
+  qList = shuffle(pool).slice(0, 10);
+  qIdx = 0; score = 0; streak = 0; bestStreak = 0;
+  correctCount = 0; wrongCount = 0; streakHistory = []; reviewData = [];
+  showScreen('screen-quiz');
+  document.getElementById('q-cat-label').textContent = CATEGORIES.find(function(c){ return c.id === selCat; }).name;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  var q = qList[qIdx];
+  answered = false;
+
+  // progress
+  document.getElementById('progress-bar').style.width = (qIdx / qList.length * 100) + '%';
+  document.getElementById('q-count').textContent = (qIdx + 1) + ' / ' + qList.length;
+
+  // streak dots
+  var dots = document.getElementById('streak-dots');
+  var dhtml = '';
+  for (var i = 0; i < 10; i++) {
+    var cls = 'streak-dot';
+    if (i < streakHistory.length) cls += streakHistory[i] ? ' hit' : ' miss';
+    dhtml += '<div class="' + cls + '"></div>';
+  }
+  dots.innerHTML = dhtml;
+  document.getElementById('score-live').textContent = score;
+
+  // question
+  document.getElementById('q-text').textContent = q.q;
+
+  // options
+  var letters = ['A','B','C','D'];
+  var icons   = ['✓','✗','✓','✗'];
+  var ohtml = '';
+  q.opts.forEach(function(opt, i) {
+    ohtml += '<button class="option" onclick="selectAnswer(' + i + ')" id="opt-' + i + '">' +
+      '<div class="opt-letter">' + letters[i] + '</div>' +
+      '<div class="opt-text">' + opt + '</div>' +
+      '<div class="opt-icon" id="opt-icon-' + i + '"></div>' +
+    '</button>';
+  });
+  document.getElementById('options').innerHTML = ohtml;
+
+  // timer
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = 15;
+  updateTimerUI();
+  timerInterval = setInterval(function() {
+    timeLeft--;
+    updateTimerUI();
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      if (!answered) timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  document.getElementById('timer-num').textContent = timeLeft;
+  var circle = document.getElementById('timer-circle');
+  var pct = timeLeft / 15;
+  var offset = 138.2 * (1 - pct);
+  circle.style.strokeDashoffset = offset;
+  circle.style.stroke = timeLeft > 7 ? '#f5c518' : timeLeft > 3 ? '#f97316' : '#ef4444';
+  document.getElementById('timer-num').style.color = timeLeft > 7 ? '#f0f0f0' : timeLeft > 3 ? '#f97316' : '#ef4444';
+}
+
+function timeUp() {
+  answered = true;
+  var q = qList[qIdx];
+  // show correct
+  document.getElementById('opt-' + q.ans).classList.add('correct');
+  document.getElementById('opt-icon-' + q.ans).textContent = '✓';
+  document.querySelectorAll('.option').forEach(function(o){ o.classList.add('locked'); });
+  streak = 0; wrongCount++;
+  streakHistory.push(false);
+  reviewData.push({ q: q.q, correct: q.opts[q.ans], userAns: null, isCorrect: false });
+  showToast("⏰ Time's up! +" + 0, false);
+  setTimeout(nextQuestion, 1800);
+}
+
+function selectAnswer(idx) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+  var q = qList[qIdx];
+  var isCorrect = idx === q.ans;
+
+  document.querySelectorAll('.option').forEach(function(o){ o.classList.add('locked'); });
+
+  if (isCorrect) {
+    document.getElementById('opt-' + idx).classList.add('correct');
+    document.getElementById('opt-icon-' + idx).textContent = '✓';
+    var points = 100 + (timeLeft * 10) + (streak * 20);
+    score += points;
+    streak++;
+    if (streak > bestStreak) bestStreak = streak;
+    correctCount++;
+    streakHistory.push(true);
+    reviewData.push({ q: q.q, correct: q.opts[q.ans], userAns: q.opts[idx], isCorrect: true });
+    showToast('🔥 +' + points + ' pts' + (streak > 1 ? '  ×' + streak + ' streak!' : ''), true);
+  } else {
+    document.getElementById('opt-' + idx).classList.add('wrong');
+    document.getElementById('opt-icon-' + idx).textContent = '✗';
+    document.getElementById('opt-' + q.ans).classList.add('correct');
+    document.getElementById('opt-icon-' + q.ans).textContent = '✓';
+    streak = 0; wrongCount++;
+    streakHistory.push(false);
+    reviewData.push({ q: q.q, correct: q.opts[q.ans], userAns: q.opts[idx], isCorrect: false });
+    showToast('❌ Wrong! Correct: ' + q.opts[q.ans], false);
+  }
+
+  setTimeout(nextQuestion, 1800);
+}
+
+function nextQuestion() {
+  qIdx++;
+  if (qIdx >= qList.length) { showResult(); return; }
+  renderQuestion();
+}
+
+// ── RESULT ──
+function showResult() {
+  showScreen('screen-result');
+  document.getElementById('result-score').textContent = score.toLocaleString();
+  document.getElementById('stat-correct').textContent = correctCount;
+  document.getElementById('stat-wrong').textContent = wrongCount;
+  document.getElementById('stat-streak').textContent = bestStreak;
+
+  var pct = correctCount / qList.length;
+  var emoji, title;
+  if (pct === 1)      { emoji='🏆'; title='PERFECT SCORE!'; }
+  else if (pct >= .8) { emoji='🔥'; title='AMAZING!'; }
+  else if (pct >= .6) { emoji='😎'; title='GREAT JOB!'; }
+  else if (pct >= .4) { emoji='🙂'; title='NOT BAD!'; }
+  else                { emoji='💪'; title='KEEP PRACTICING!'; }
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-sub').textContent = correctCount + ' / ' + qList.length + ' correct answers';
+
+  var rr = document.getElementById('result-review');
+  var rhtml = '';
+  reviewData.forEach(function(r) {
+    rhtml += '<div class="review-item">' +
+      '<div class="review-icon">' + (r.isCorrect ? '✅' : '❌') + '</div>' +
+      '<div>' +
+        '<div class="review-q">' + r.q + '</div>' +
+        '<div class="review-a ' + (r.isCorrect ? 'correct-a' : 'wrong-a') + '">' +
+          (r.isCorrect ? r.correct : '✗ ' + (r.userAns || 'No answer') + '  →  ✓ ' + r.correct) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  rr.innerHTML = rhtml;
+}
+
+function restartQuiz() { startQuiz(); }
+function goHome() { showScreen('screen-home'); }
+
+// ── UTILS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+var toastTimeout;
+function showToast(msg, correct) {
+  var t = document.getElementById('feedback-toast');
+  t.textContent = msg;
+  t.className = 'show ' + (correct ? 'correct-toast' : 'wrong-toast');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(function() { t.classList.remove('show'); }, 1600);
+}
+</script>
+</body>
+</html>
