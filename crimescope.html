@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrimeScope — City Safety Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #03040a;
+  --deep: #080c14;
+  --panel: #0d1420;
+  --panel2: #111928;
+  --border: rgba(0,200,255,0.08);
+  --border2: rgba(0,200,255,0.15);
+  --cyan: #00c8ff;
+  --cyan2: #00ffea;
+  --red: #ff2d55;
+  --orange: #ff6b00;
+  --yellow: #ffe033;
+  --green: #00ff88;
+  --text: #d0e8f5;
+  --muted: #3a5070;
+  --muted2: #4a6585;
+  --grid: rgba(0,200,255,0.04);
+  --glow-cyan: rgba(0,200,255,0.15);
+  --glow-red: rgba(255,45,85,0.2);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+
+body {
+  background: var(--void);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* SCAN LINE OVERLAY */
+body::before {
+  content:'';
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,200,255,0.015) 2px, rgba(0,200,255,0.015) 4px);
+  pointer-events:none; z-index:1000; animation: scanMove 8s linear infinite;
+}
+@keyframes scanMove { from{background-position:0 0} to{background-position:0 100px} }
+
+/* GRID BG */
+body::after {
+  content:'';
+  position:fixed; top:0; left:0; right:0; bottom:0;
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events:none; z-index:0;
+}
+
+/* AMBIENT GLOW */
+.ambient {
+  position:fixed; top:-20%; left:30%; width:40%; height:50%;
+  background: radial-gradient(ellipse, rgba(0,200,255,0.04) 0%, transparent 70%);
+  pointer-events:none; z-index:0; animation: pulse 4s ease-in-out infinite;
+}
+.ambient2 {
+  position:fixed; bottom:-10%; right:10%; width:35%; height:40%;
+  background: radial-gradient(ellipse, rgba(255,45,85,0.05) 0%, transparent 70%);
+  pointer-events:none; z-index:0; animation: pulse 6s ease-in-out infinite reverse;
+}
+@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+/* HEADER */
+header {
+  position:sticky; top:0; z-index:500;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 32px;
+  height:56px;
+  background: rgba(3,4,10,0.92);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border2);
+  box-shadow: 0 0 40px rgba(0,200,255,0.05);
+}
+
+.logo-wrap { display:flex; align-items:center; gap:14px; }
+.logo-icon {
+  width:32px; height:32px;
+  border:1.5px solid var(--cyan);
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  position:relative;
+  box-shadow: 0 0 12px var(--glow-cyan), inset 0 0 8px rgba(0,200,255,0.1);
+  animation: borderGlow 2s ease-in-out infinite;
+}
+.logo-icon::before {
+  content:'◎'; color:var(--cyan); font-size:14px;
+  animation: rotate 8s linear infinite;
+}
+@keyframes borderGlow { 0%,100%{box-shadow:0 0 12px var(--glow-cyan)} 50%{box-shadow:0 0 24px var(--glow-cyan)} }
+@keyframes rotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+.logo-text {
+  font-family: 'Bebas Neue', cursive;
+  font-size:1.5rem;
+  letter-spacing: 3px;
+  color:var(--cyan);
+  text-shadow: 0 0 20px rgba(0,200,255,0.5);
+}
+.logo-sub {
+  font-family: 'Space Mono', monospace;
+  font-size:0.55rem;
+  color:var(--muted2);
+  letter-spacing:2px;
+  margin-top:-2px;
+}
+
+.header-center { display:flex; align-items:center; gap:24px; }
+.sys-status {
+  display:flex; align-items:center; gap:8px;
+  font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--muted2);
+}
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:blink 1.5s ease-in-out infinite; box-shadow:0 0 8px var(--green); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.header-right { display:flex; align-items:center; gap:16px; }
+.city-select {
+  background: var(--panel);
+  border:1px solid var(--border2);
+  color:var(--cyan);
+  font-family:'Space Mono', monospace;
+  font-size:0.7rem;
+  padding:6px 12px;
+  border-radius:4px;
+  cursor:pointer;
+  outline:none;
+  letter-spacing:1px;
+}
+.btn-alert {
+  background: transparent;
+  border:1px solid var(--red);
+  color:var(--red);
+  font-family:'Space Mono', monospace;
+  font-size:0.65rem;
+  padding:6px 14px;
+  border-radius:4px;
+  cursor:pointer;
+  letter-spacing:1px;
+  position:relative;
+  transition: all 0.2s;
+}
+.btn-alert:hover { background:rgba(255,45,85,0.1); box-shadow:0 0 20px rgba(255,45,85,0.3); }
+.btn-alert .notif { position:absolute; top:-4px; right:-4px; width:8px; height:8px; background:var(--red); border-radius:50%; animation:blink 1s infinite; }
+
+/* TICKER */
+.ticker {
+  position:sticky; top:56px; z-index:499;
+  background: var(--panel);
+  border-bottom:1px solid var(--border);
+  height:32px; display:flex; align-items:center;
+  overflow:hidden;
+  font-family:'Space Mono', monospace; font-size:0.62rem; color:var(--muted2);
+}
+.ticker-label { padding:0 16px; color:var(--cyan); border-right:1px solid var(--border2); font-size:0.62rem; white-space:nowrap; flex-shrink:0; letter-spacing:1px; }
+.ticker-track { flex:1; overflow:hidden; }
+.ticker-inner { white-space:nowrap; animation:ticker 30s linear infinite; }
+.ticker-item { display:inline-block; padding:0 32px; }
+.ticker-item .ti-badge { display:inline-block; padding:1px 6px; border-radius:2px; font-size:0.58rem; margin-right:6px; }
+.badge-red { background:rgba(255,45,85,0.2); color:var(--red); }
+.badge-orange { background:rgba(255,107,0,0.2); color:var(--orange); }
+.badge-yellow { background:rgba(255,224,51,0.15); color:var(--yellow); }
+.badge-green { background:rgba(0,255,136,0.12); color:var(--green); }
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+/* MAIN LAYOUT */
+main { position:relative; z-index:1; display:grid; grid-template-columns:280px 1fr 300px; height:calc(100vh - 88px); }
+
+/* LEFT PANEL */
+.left-panel {
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+.panel-header {
+  padding:16px 20px 12px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.ph-title { font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--cyan); letter-spacing:2px; }
+.ph-count { font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--muted2); }
+
+/* Filters */
+.filters { padding:16px 20px; border-bottom:1px solid var(--border); }
+.filter-group { margin-bottom:14px; }
+.filter-label { font-family:'Space Mono', monospace; font-size:0.58rem; color:var(--muted2); letter-spacing:1.5px; margin-bottom:8px; display:block; }
+.filter-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  padding:4px 10px; border-radius:3px;
+  font-size:0.7rem; cursor:pointer;
+  border:1px solid var(--border2);
+  color:var(--muted2);
+  transition:all 0.15s;
+  background:transparent;
+  font-family:'Outfit', sans-serif;
+}
+.chip.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,200,255,0.08); box-shadow:0 0 10px rgba(0,200,255,0.1); }
+.chip:hover { border-color:var(--muted2); color:var(--text); }
+
+/* Threat meter */
+.threat-section { padding:16px 20px; border-bottom:1px solid var(--border); }
+.threat-label { font-family:'Space Mono', monospace; font-size:0.58rem; color:var(--muted2); letter-spacing:1.5px; margin-bottom:12px; display:block; }
+.threat-bar-wrap { position:relative; margin-bottom:10px; }
+.threat-name { display:flex; justify-content:space-between; margin-bottom:5px; }
+.threat-name span:first-child { font-size:0.75rem; color:var(--text); }
+.threat-name span:last-child { font-family:'Space Mono', monospace; font-size:0.65rem; }
+.tbar { height:6px; background:var(--panel2); border-radius:2px; overflow:hidden; }
+.tbar-fill { height:100%; border-radius:2px; transition:width 1.5s cubic-bezier(0.4,0,0.2,1); }
+
+/* Incidents list */
+.incidents-list { flex:1; overflow-y:auto; }
+.incidents-list::-webkit-scrollbar { width:3px; }
+.incidents-list::-webkit-scrollbar-track { background:transparent; }
+.incidents-list::-webkit-scrollbar-thumb { background:var(--muted); border-radius:99px; }
+
+.incident-item {
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:background 0.15s;
+  animation: fadeSlide 0.3s ease both;
+}
+.incident-item:hover { background:rgba(0,200,255,0.03); }
+@keyframes fadeSlide { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.ii-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px; }
+.ii-type { font-size:0.8rem; font-weight:600; }
+.ii-time { font-family:'Space Mono', monospace; font-size:0.58rem; color:var(--muted2); }
+.ii-loc { font-size:0.72rem; color:var(--muted2); margin-bottom:4px; }
+.ii-bottom { display:flex; gap:8px; align-items:center; }
+.severity-tag {
+  font-family:'Space Mono', monospace; font-size:0.55rem;
+  padding:2px 7px; border-radius:2px; letter-spacing:1px;
+}
+.sev-critical { background:rgba(255,45,85,0.2); color:var(--red); border:1px solid rgba(255,45,85,0.3); }
+.sev-high { background:rgba(255,107,0,0.15); color:var(--orange); border:1px solid rgba(255,107,0,0.25); }
+.sev-medium { background:rgba(255,224,51,0.1); color:var(--yellow); border:1px solid rgba(255,224,51,0.2); }
+.sev-low { background:rgba(0,255,136,0.08); color:var(--green); border:1px solid rgba(0,255,136,0.15); }
+
+/* CENTER MAP */
+.map-area { position:relative; overflow:hidden; background:var(--deep); }
+
+.map-canvas-wrap { position:absolute; inset:0; }
+#cityCanvas { width:100%; height:100%; display:block; }
+
+/* Map overlay UI */
+.map-ui { position:absolute; inset:0; pointer-events:none; }
+
+.map-corner {
+  position:absolute;
+  font-family:'Space Mono', monospace; font-size:0.6rem; color:var(--muted);
+  pointer-events:none;
+}
+.mc-tl { top:16px; left:16px; }
+.mc-tr { top:16px; right:16px; text-align:right; }
+.mc-bl { bottom:16px; left:16px; }
+.mc-br { bottom:16px; right:16px; text-align:right; }
+
+.corner-bracket {
+  position:absolute;
+  width:20px; height:20px;
+  border-color:var(--cyan);
+  border-style:solid;
+  opacity:0.4;
+}
+.cb-tl { top:8px; left:8px; border-width:1px 0 0 1px; }
+.cb-tr { top:8px; right:8px; border-width:1px 1px 0 0; }
+.cb-bl { bottom:8px; left:8px; border-width:0 0 1px 1px; }
+.cb-br { bottom:8px; right:8px; border-width:0 1px 1px 0; }
+
+/* Crosshair */
+.crosshair {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  opacity:0.3;
+}
+.ch-h { position:absolute; top:50%; left:-20px; right:-20px; height:1px; background:var(--cyan); transform:translateY(-50%); }
+.ch-v { position:absolute; left:50%; top:-20px; bottom:-20px; width:1px; background:var(--cyan); transform:translateX(-50%); }
+.ch-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:6px; height:6px; border:1px solid var(--cyan); border-radius:50%; }
+
+/* Map controls */
+.map-controls {
+  position:absolute; right:16px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:4px;
+  pointer-events:all;
+}
+.map-ctrl-btn {
+  width:34px; height:34px;
+  background:rgba(8,12,20,0.9);
+  border:1px solid var(--border2);
+  color:var(--cyan);
+  border-radius:4px;
+  cursor:pointer;
+  font-size:0.9rem;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.15s;
+  font-family:'Space Mono', monospace;
+}
+.map-ctrl-btn:hover { background:rgba(0,200,255,0.1); border-color:var(--cyan); }
+.map-ctrl-btn.active { background:rgba(0,200,255,0.15); border-color:var(--cyan); box-shadow:0 0 12px rgba(0,200,255,0.2); }
+
+/* Legend */
+.map-legend {
+  position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+  display:flex; gap:16px; align-items:center;
+  background:rgba(8,12,20,0.85);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px 16px;
+  pointer-events:all;
+  font-size:0.7rem;
+}
+.legend-item { display:flex; align-items:center; gap:6px; color:var(--muted2); }
+.li-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* Scanning line animation */
+.scan-line {
+  position:absolute; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity:0.4;
+  animation:scanY 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes scanY {
+  0%{top:0;opacity:0} 10%{opacity:0.4} 90%{opacity:0.4} 100%{top:100%;opacity:0}
+}
+
+/* Tooltip */
+.map-tooltip {
+  position:absolute; pointer-events:none; z-index:50;
+  background:rgba(8,12,20,0.95);
+  border:1px solid var(--cyan);
+  border-radius:6px; padding:10px 14px;
+  font-size:0.75rem;
+  box-shadow:0 0 24px rgba(0,200,255,0.15);
+  display:none;
+  min-width:160px;
+}
+.mt-title { font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--cyan); margin-bottom:6px; letter-spacing:1px; }
+.mt-row { display:flex; justify-content:space-between; gap:20px; margin-bottom:3px; font-size:0.7rem; }
+.mt-row span:last-child { color:var(--text); font-weight:600; }
+
+/* RIGHT PANEL */
+.right-panel {
+  background:var(--panel);
+  border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+/* Stats cards */
+.stats-grid { padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; border-bottom:1px solid var(--border); }
+.stat-card {
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:12px;
+  position:relative; overflow:hidden;
+}
+.stat-card::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:1px;
+  background:var(--accent-grad, linear-gradient(90deg, transparent, var(--cyan), transparent));
+  opacity:0.6;
+}
+.sc-label { font-family:'Space Mono', monospace; font-size:0.52rem; color:var(--muted2); letter-spacing:1.5px; margin-bottom:6px; }
+.sc-value { font-family:'Bebas Neue', cursive; font-size:1.8rem; line-height:1; letter-spacing:1px; }
+.sc-delta { font-size:0.65rem; margin-top:3px; }
+.delta-up { color:var(--red); }
+.delta-down { color:var(--green); }
+
+/* AI Prediction */
+.ai-section { padding:16px; border-bottom:1px solid var(--border); }
+.ai-header { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.ai-badge {
+  font-family:'Space Mono', monospace; font-size:0.55rem;
+  background:rgba(0,200,255,0.1); border:1px solid rgba(0,200,255,0.25);
+  color:var(--cyan); padding:2px 8px; border-radius:3px;
+  letter-spacing:1.5px; animation:aiPulse 2s ease-in-out infinite;
+}
+@keyframes aiPulse { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 12px rgba(0,200,255,0.2)} }
+.ai-title { font-size:0.82rem; font-weight:600; }
+
+.pred-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.pred-zone { font-size:0.75rem; font-weight:500; min-width:90px; }
+.pred-bar-wrap { flex:1; background:var(--panel2); height:5px; border-radius:2px; overflow:hidden; }
+.pred-bar { height:100%; border-radius:2px; }
+.pred-pct { font-family:'Space Mono', monospace; font-size:0.6rem; color:var(--muted2); min-width:34px; text-align:right; }
+
+/* Heatmap zones */
+.zones-section { padding:16px; border-bottom:1px solid var(--border); }
+.zone-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.zone-card {
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:10px 12px;
+  cursor:pointer; transition:all 0.2s;
+}
+.zone-card:hover { border-color:var(--cyan); transform:translateY(-1px); }
+.zc-name { font-size:0.78rem; font-weight:600; margin-bottom:4px; }
+.zc-score { font-family:'Bebas Neue', cursive; font-size:1.3rem; line-height:1; }
+.zc-label { font-size:0.62rem; color:var(--muted2); }
+
+/* Timeline */
+.timeline-section { flex:1; padding:16px; overflow:hidden; display:flex; flex-direction:column; }
+.tl-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.tl-title { font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--cyan); letter-spacing:2px; }
+.tl-chart { flex:1; display:flex; align-items:flex-end; gap:4px; }
+.tl-bar {
+  flex:1; border-radius:2px 2px 0 0;
+  position:relative; cursor:pointer;
+  transition:all 0.3s ease;
+  min-height:6px;
+}
+.tl-bar:hover { filter:brightness(1.4); }
+.tl-bar .tl-tip {
+  position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:var(--panel); border:1px solid var(--border2);
+  font-family:'Space Mono', monospace; font-size:0.55rem; color:var(--text);
+  padding:3px 7px; border-radius:3px; white-space:nowrap;
+  display:none;
+}
+.tl-bar:hover .tl-tip { display:block; }
+.tl-labels { display:flex; justify-content:space-between; margin-top:6px; font-family:'Space Mono', monospace; font-size:0.55rem; color:var(--muted); }
+
+/* MODAL */
+.modal-overlay {
+  display:none; position:fixed; inset:0; z-index:900;
+  background:rgba(3,4,10,0.85); backdrop-filter:blur(8px);
+  align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--panel);
+  border:1px solid var(--border2);
+  border-radius:12px;
+  width:540px; max-width:90vw;
+  box-shadow:0 0 80px rgba(0,200,255,0.1);
+  animation:modalIn 0.3s cubic-bezier(0.4,0,0.2,1);
+  overflow:hidden;
+}
+@keyframes modalIn { from{opacity:0;transform:scale(0.95) translateY(10px)} to{opacity:1;transform:none} }
+.modal-header {
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.mh-left { display:flex; align-items:center; gap:12px; }
+.mh-icon { font-size:1.5rem; }
+.mh-title { font-family:'Bebas Neue', cursive; font-size:1.4rem; letter-spacing:2px; }
+.mh-id { font-family:'Space Mono', monospace; font-size:0.6rem; color:var(--muted2); }
+.modal-close { background:none; border:none; color:var(--muted2); cursor:pointer; font-size:1.2rem; transition:color 0.15s; }
+.modal-close:hover { color:var(--red); }
+.modal-body { padding:20px 24px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px 24px; margin-bottom:20px; }
+.detail-item { }
+.di-label { font-family:'Space Mono', monospace; font-size:0.55rem; color:var(--muted2); letter-spacing:1.5px; margin-bottom:4px; }
+.di-value { font-size:0.88rem; font-weight:500; }
+.modal-map-preview {
+  background:var(--deep); border:1px solid var(--border);
+  border-radius:8px; height:120px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--muted2); font-family:'Space Mono', monospace; font-size:0.65rem;
+  letter-spacing:1px; margin-bottom:16px;
+  position:relative; overflow:hidden;
+}
+.modal-map-preview canvas { position:absolute; inset:0; width:100%; height:100%; }
+.modal-footer { display:flex; gap:10px; }
+.btn-modal {
+  flex:1; padding:10px;
+  border-radius:6px; cursor:pointer; font-family:'Space Mono', monospace;
+  font-size:0.65rem; letter-spacing:1px; transition:all 0.2s;
+  border:1px solid var(--border2); background:transparent; color:var(--cyan);
+}
+.btn-modal:hover { background:rgba(0,200,255,0.1); border-color:var(--cyan); }
+.btn-modal.primary { background:rgba(255,45,85,0.15); border-color:var(--red); color:var(--red); }
+.btn-modal.primary:hover { background:rgba(255,45,85,0.25); }
+
+/* ALERT MODAL */
+.alert-modal {
+  position:fixed; top:80px; right:24px; z-index:800;
+  width:320px;
+  background:var(--panel);
+  border:1px solid rgba(255,45,85,0.3);
+  border-radius:10px;
+  box-shadow:0 0 40px rgba(255,45,85,0.15);
+  padding:18px 20px;
+  animation:alertIn 0.4s cubic-bezier(0.4,0,0.2,1);
+  display:none;
+}
+.alert-modal.show { display:block; }
+@keyframes alertIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:none} }
+.am-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.am-badge { font-family:'Space Mono', monospace; font-size:0.6rem; color:var(--red); letter-spacing:2px; display:flex; align-items:center; gap:6px; }
+.am-badge::before { content:''; width:6px; height:6px; background:var(--red); border-radius:50%; animation:blink 0.8s infinite; }
+.am-close { background:none; border:none; color:var(--muted2); cursor:pointer; font-size:0.9rem; }
+.am-title { font-family:'Bebas Neue', cursive; font-size:1.1rem; letter-spacing:2px; margin-bottom:4px; color:var(--red); }
+.am-desc { font-size:0.75rem; color:var(--muted2); line-height:1.5; }
+
+/* LOADING SPLASH */
+.loading-splash {
+  position:fixed; inset:0; z-index:2000;
+  background:var(--void);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px;
+  animation:splashOut 0.5s ease 2.5s both;
+}
+@keyframes splashOut { to{opacity:0;pointer-events:none} }
+.splash-logo { font-family:'Bebas Neue', cursive; font-size:3rem; letter-spacing:8px; color:var(--cyan); text-shadow:0 0 40px rgba(0,200,255,0.6); }
+.splash-bar-wrap { width:300px; height:2px; background:var(--panel2); border-radius:99px; overflow:hidden; }
+.splash-bar { height:100%; background:linear-gradient(90deg, var(--cyan), var(--cyan2)); border-radius:99px; animation:loadBar 2.4s ease forwards; }
+@keyframes loadBar { from{width:0} to{width:100%} }
+.splash-status { font-family:'Space Mono', monospace; font-size:0.65rem; color:var(--muted2); letter-spacing:2px; }
+.splash-items { display:flex; flex-direction:column; gap:4px; margin-top:8px; }
+.si { font-family:'Space Mono', monospace; font-size:0.6rem; color:var(--muted); display:flex; align-items:center; gap:8px; animation:fadeSlide 0.3s ease both; }
+.si::before { content:'[OK]'; color:var(--green); }
+</style>
+</head>
+<body>
+
+<!-- LOADING SPLASH -->
+<div class="loading-splash">
+  <div class="splash-logo">CRIMESCOPE</div>
+  <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+  <div class="splash-status">INITIALIZING INTELLIGENCE SYSTEMS</div>
+  <div class="splash-items">
+    <div class="si" style="animation-delay:0.3s">SATELLITE FEED CONNECTED</div>
+    <div class="si" style="animation-delay:0.7s">INCIDENT DATABASE LOADED</div>
+    <div class="si" style="animation-delay:1.1s">AI PREDICTION ENGINE ONLINE</div>
+    <div class="si" style="animation-delay:1.5s">CITY GRID RENDERED</div>
+    <div class="si" style="animation-delay:1.9s">REAL-TIME SYNC ACTIVE</div>
+  </div>
+</div>
+
+<div class="ambient"></div>
+<div class="ambient2"></div>
+
+<!-- ALERT MODAL -->
+<div class="alert-modal" id="alertModal">
+  <div class="am-top">
+    <div class="am-badge">CRITICAL ALERT</div>
+    <button class="am-close" onclick="closeAlert()">✕</button>
+  </div>
+  <div class="am-title">⚠ ARMED ROBBERY IN PROGRESS</div>
+  <div class="am-desc">District 7 — Commerce St & 3rd Ave. Units dispatched. Estimated response: 2.4 min. Avoid area.</div>
+</div>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-icon"></div>
+    <div>
+      <div class="logo-text">CrimeScope</div>
+      <div class="logo-sub">CITY SAFETY INTELLIGENCE v2.4</div>
+    </div>
+  </div>
+  <div class="header-center">
+    <div class="sys-status"><div class="status-dot"></div>LIVE FEED ACTIVE</div>
+    <div class="sys-status" style="color:var(--muted2)">|</div>
+    <div class="sys-status" id="liveClock"></div>
+    <div class="sys-status" style="color:var(--muted2)">|</div>
+    <div class="sys-status">LAST SYNC: <span id="syncTime" style="color:var(--cyan)">00:00:02</span></div>
+  </div>
+  <div class="header-right">
+    <select class="city-select" onchange="updateCity(this.value)">
+      <option>METRO CITY</option>
+      <option>DOWNTOWN</option>
+      <option>NORTHSIDE</option>
+      <option>EASTPORT</option>
+    </select>
+    <button class="btn-alert" onclick="triggerAlert()">
+      <div class="notif"></div>
+      ⚠ ALERTS (3)
+    </button>
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">● LIVE FEED</div>
+  <div class="ticker-track">
+    <div class="ticker-inner" id="tickerInner"></div>
+  </div>
+</div>
+
+<main>
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="panel-header">
+      <span class="ph-title">INCIDENT FEED</span>
+      <span class="ph-count" id="incidentCount">0 ACTIVE</span>
+    </div>
+
+    <div class="filters">
+      <div class="filter-group">
+        <span class="filter-label">CRIME TYPE</span>
+        <div class="filter-chips">
+          <div class="chip active" onclick="toggleChip(this)">All</div>
+          <div class="chip" onclick="toggleChip(this)">Theft</div>
+          <div class="chip" onclick="toggleChip(this)">Assault</div>
+          <div class="chip" onclick="toggleChip(this)">Robbery</div>
+          <div class="chip" onclick="toggleChip(this)">Vandalism</div>
+          <div class="chip" onclick="toggleChip(this)">Fraud</div>
+        </div>
+      </div>
+      <div class="filter-group" style="margin-bottom:0">
+        <span class="filter-label">SEVERITY</span>
+        <div class="filter-chips">
+          <div class="chip active" onclick="toggleChip(this)" style="--border-color:var(--red); border-color:var(--red); color:var(--red);">Critical</div>
+          <div class="chip" onclick="toggleChip(this)">High</div>
+          <div class="chip" onclick="toggleChip(this)">Medium</div>
+          <div class="chip" onclick="toggleChip(this)">Low</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="threat-section">
+      <span class="threat-label">THREAT BY CATEGORY</span>
+      <div id="threatBars"></div>
+    </div>
+
+    <div class="incidents-list" id="incidentsList"></div>
+  </div>
+
+  <!-- MAP CENTER -->
+  <div class="map-area" id="mapArea">
+    <div class="map-canvas-wrap">
+      <canvas id="cityCanvas"></canvas>
+    </div>
+    <div class="scan-line"></div>
+    <div class="map-ui">
+      <div class="corner-bracket cb-tl"></div>
+      <div class="corner-bracket cb-tr"></div>
+      <div class="corner-bracket cb-bl"></div>
+      <div class="corner-bracket cb-br"></div>
+      <div class="map-corner mc-tl">
+        <div>LAT: 40.7128°N</div>
+        <div>LNG: 74.0060°W</div>
+        <div style="margin-top:4px;color:var(--cyan)">METRO CITY GRID</div>
+      </div>
+      <div class="map-corner mc-tr">
+        <div>ZOOM: 14.2x</div>
+        <div>RADIUS: 8.4km</div>
+        <div style="margin-top:4px;color:var(--red)" id="activeCount">47 ACTIVE ZONES</div>
+      </div>
+      <div class="map-corner mc-bl">GRID REF: MC-7742-B</div>
+      <div class="map-corner mc-br">AI MODEL: PREDICTIVE v3.1</div>
+    </div>
+
+    <div class="map-controls">
+      <button class="map-ctrl-btn active" title="Heat Map" onclick="setMapMode('heat',this)">🔥</button>
+      <button class="map-ctrl-btn" title="Incidents" onclick="setMapMode('dots',this)">📍</button>
+      <button class="map-ctrl-btn" title="Zones" onclick="setMapMode('zones',this)">⬡</button>
+      <button class="map-ctrl-btn" title="Prediction" onclick="setMapMode('ai',this)">🧠</button>
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
+      <button class="map-ctrl-btn" onclick="zoomIn()">+</button>
+      <button class="map-ctrl-btn" onclick="zoomOut()">−</button>
+    </div>
+
+    <div class="map-legend" id="mapLegend">
+      <div class="legend-item"><div class="li-dot" style="background:#ff2d55;box-shadow:0 0 6px #ff2d55"></div>Critical</div>
+      <div class="legend-item"><div class="li-dot" style="background:#ff6b00;box-shadow:0 0 6px #ff6b00"></div>High</div>
+      <div class="legend-item"><div class="li-dot" style="background:#ffe033;box-shadow:0 0 6px #ffe033"></div>Medium</div>
+      <div class="legend-item"><div class="li-dot" style="background:#00ff88;box-shadow:0 0 6px #00ff88"></div>Low</div>
+      <div style="width:1px;height:16px;background:var(--border)"></div>
+      <div class="legend-item" style="color:var(--cyan)">● Live</div>
+    </div>
+
+    <div class="map-tooltip" id="mapTooltip">
+      <div class="mt-title" id="tt-zone">ZONE</div>
+      <div class="mt-row"><span>Incidents</span><span id="tt-inc">—</span></div>
+      <div class="mt-row"><span>Risk Score</span><span id="tt-risk">—</span></div>
+      <div class="mt-row"><span>Trend</span><span id="tt-trend">—</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="sc-label">TODAY</div>
+        <div class="sc-value" style="color:var(--red)" id="statToday">247</div>
+        <div class="sc-delta delta-up">↑ +12% vs avg</div>
+      </div>
+      <div class="stat-card" style="--accent-grad:linear-gradient(90deg,transparent,var(--orange),transparent)">
+        <div class="sc-label">THIS WEEK</div>
+        <div class="sc-value" style="color:var(--orange)">1,842</div>
+        <div class="sc-delta delta-up">↑ +3% vs last</div>
+      </div>
+      <div class="stat-card" style="--accent-grad:linear-gradient(90deg,transparent,var(--green),transparent)">
+        <div class="sc-label">SOLVED</div>
+        <div class="sc-value" style="color:var(--green)">68%</div>
+        <div class="sc-delta delta-down">↓ −2% vs avg</div>
+      </div>
+      <div class="stat-card" style="--accent-grad:linear-gradient(90deg,transparent,var(--cyan),transparent)">
+        <div class="sc-label">RESPONSE</div>
+        <div class="sc-value" style="color:var(--cyan)">4.2<span style="font-size:0.9rem">m</span></div>
+        <div class="sc-delta delta-down">↓ −0.3m vs avg</div>
+      </div>
+    </div>
+
+    <!-- AI PREDICTION -->
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-badge">AI PREDICT</div>
+        <div class="ai-title">Next 2hr Risk Forecast</div>
+      </div>
+      <div id="predRows"></div>
+    </div>
+
+    <!-- ZONES -->
+    <div class="zones-section">
+      <div class="panel-header" style="border:none;padding:0 0 12px 0">
+        <span class="ph-title">ZONE WATCH</span>
+        <span class="ph-count">LIVE</span>
+      </div>
+      <div class="zone-grid" id="zoneGrid"></div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-section">
+      <div class="tl-header">
+        <span class="tl-title">24HR ACTIVITY</span>
+        <span style="font-family:'Space Mono',monospace;font-size:0.55rem;color:var(--muted2)">INCIDENTS/HR</span>
+      </div>
+      <div class="tl-chart" id="tlChart"></div>
+      <div class="tl-labels" id="tlLabels"></div>
+    </div>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="incidentModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="mh-left">
+        <div class="mh-icon" id="modal-icon">🔍</div>
+        <div>
+          <div class="mh-title" id="modal-title">INCIDENT DETAILS</div>
+          <div class="mh-id" id="modal-id">INC-0000</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid" id="modal-details"></div>
+      <div class="modal-map-preview">
+        <canvas id="miniMapCanvas"></canvas>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal">📋 REPORT</button>
+        <button class="btn-modal">📡 DISPATCH</button>
+        <button class="btn-modal primary">🚨 ESCALATE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────
+const CRIMES = ['Armed Robbery','Vehicle Theft','Assault','Burglary','Drug Offense','Vandalism','Pickpocket','Fraud','Hit & Run','Carjacking'];
+const ZONES = ['Downtown','Northgate','Riverside','Commerce','Harbor','Midtown','Eastside','Westpark'];
+const ICONS = ['🔫','🚗','👊','🏠','💊','🪨','👜','💳','🚦','🚙'];
+const SEVE = ['critical','high','high','medium','medium','medium','low','low'];
+
+let incidents = [];
+let mapMode = 'heat';
+let zoomLevel = 1;
+let animFrame;
+let tickCount = 0;
+
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function randEl(arr){return arr[randInt(0,arr.length-1)];}
+function timeSince(ms){ const s=Math.floor((Date.now()-ms)/1000); if(s<60)return s+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago'; return Math.floor(s/3600)+'h ago'; }
+
+function genIncident(){
+  const ci=randInt(0,CRIMES.length-1);
+  return {
+    id: 'INC-'+String(randInt(10000,99999)),
+    type: CRIMES[ci],
+    icon: ICONS[ci],
+    zone: randEl(ZONES),
+    severity: SEVE[randInt(0,SEVE.length-1)],
+    ts: Date.now()-randInt(0,3600000),
+    street: randInt(1,99)+' '+randEl(['Oak','Main','Commerce','Harbor','Elm','Park','River'])+ ' '+ randEl(['St','Ave','Blvd','Rd']),
+    units: randInt(0,4),
+    x: Math.random(), y: Math.random(),
+    lat: (40.7+Math.random()*0.08).toFixed(4),
+    lng: (74.0+Math.random()*0.08).toFixed(4),
+  };
+}
+
+// Init incidents
+for(let i=0;i<40;i++) incidents.push(genIncident());
+
+// ─── UI: Clock ───────────────────────────────────────────────────
+function updateClock(){
+  const n=new Date();
+  document.getElementById('liveClock').textContent=n.toLocaleTimeString('en-US',{hour12:false});
+}
+setInterval(updateClock,1000); updateClock();
+
+let syncSec=0;
+setInterval(()=>{
+  syncSec++;
+  if(syncSec>10){ syncSec=0; }
+  document.getElementById('syncTime').textContent='00:00:'+String(syncSec).padStart(2,'0');
+},1000);
+
+// ─── UI: Ticker ──────────────────────────────────────────────────
+function buildTicker(){
+  const t=document.getElementById('tickerInner');
+  const items=incidents.slice(0,10).map(i=>{
+    const cls={critical:'badge-red',high:'badge-orange',medium:'badge-yellow',low:'badge-green'}[i.severity];
+    return `<span class="ticker-item"><span class="ti-badge ${cls}">${i.severity.toUpperCase()}</span>${i.type} · ${i.zone} · ${timeSince(i.ts)}</span>`;
+  }).join('');
+  t.innerHTML=items+items; // duplicate for seamless
+}
+buildTicker();
+
+// ─── UI: Incident List ───────────────────────────────────────────
+function renderIncidents(){
+  const el=document.getElementById('incidentsList');
+  document.getElementById('incidentCount').textContent=incidents.length+' ACTIVE';
+  el.innerHTML = incidents.slice(0,20).map((inc,i)=>{
+    const sevClass={critical:'sev-critical',high:'sev-high',medium:'sev-medium',low:'sev-low'}[inc.severity];
+    return `<div class="incident-item" style="animation-delay:${i*0.04}s" onclick="showIncidentModal('${inc.id}')">
+      <div class="ii-top">
+        <div class="ii-type">${inc.icon} ${inc.type}</div>
+        <div class="ii-time">${timeSince(inc.ts)}</div>
+      </div>
+      <div class="ii-loc">📍 ${inc.street}, ${inc.zone}</div>
+      <div class="ii-bottom">
+        <span class="severity-tag ${sevClass}">${inc.severity.toUpperCase()}</span>
+        ${inc.units>0?`<span style="font-size:0.65rem;color:var(--muted2)">🚔 ${inc.units} unit${inc.units>1?'s':''}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+renderIncidents();
+
+// ─── UI: Threat Bars ─────────────────────────────────────────────
+function renderThreatBars(){
+  const data=[
+    {label:'Theft & Robbery',pct:78,color:'#ff2d55'},
+    {label:'Assault',pct:54,color:'#ff6b00'},
+    {label:'Vehicle Crime',pct:43,color:'#ffe033'},
+    {label:'Drug Offense',pct:31,color:'#00c8ff'},
+    {label:'Vandalism',pct:22,color:'#00ff88'},
+  ];
+  document.getElementById('threatBars').innerHTML=data.map(d=>`
+    <div class="threat-bar-wrap">
+      <div class="threat-name"><span>${d.label}</span><span style="color:${d.color}">${d.pct}%</span></div>
+      <div class="tbar"><div class="tbar-fill" style="width:${d.pct}%;background:${d.color};box-shadow:0 0 6px ${d.color}40"></div></div>
+    </div>`).join('');
+}
+renderThreatBars();
+
+// ─── UI: Predictions ─────────────────────────────────────────────
+function renderPredictions(){
+  const preds=[
+    {zone:'Harbor District',pct:87,color:'#ff2d55'},
+    {zone:'Commerce St',pct:71,color:'#ff6b00'},
+    {zone:'Northgate',pct:54,color:'#ffe033'},
+    {zone:'Downtown Core',pct:38,color:'#00c8ff'},
+    {zone:'Westpark',pct:22,color:'#00ff88'},
+  ];
+  document.getElementById('predRows').innerHTML=preds.map(p=>`
+    <div class="pred-row">
+      <div class="pred-zone" style="color:${p.color}">${p.zone}</div>
+      <div class="pred-bar-wrap"><div class="pred-bar" style="width:${p.pct}%;background:${p.color};box-shadow:0 0 6px ${p.color}50;transition:width 1.5s ease"></div></div>
+      <div class="pred-pct">${p.pct}%</div>
+    </div>`).join('');
+}
+renderPredictions();
+
+// ─── UI: Zone Grid ───────────────────────────────────────────────
+function renderZones(){
+  const zones=[
+    {name:'Harbor',score:92,label:'CRITICAL',color:'var(--red)'},
+    {name:'Commerce',score:78,label:'HIGH',color:'var(--orange)'},
+    {name:'Northgate',score:61,label:'HIGH',color:'var(--orange)'},
+    {name:'Downtown',score:45,label:'MEDIUM',color:'var(--yellow)'},
+    {name:'Midtown',score:34,label:'MEDIUM',color:'var(--yellow)'},
+    {name:'Westpark',score:18,label:'LOW',color:'var(--green)'},
+  ];
+  document.getElementById('zoneGrid').innerHTML=zones.map(z=>`
+    <div class="zone-card" onclick="focusZone('${z.name}')">
+      <div class="zc-name">${z.name}</div>
+      <div class="zc-score" style="color:${z.color}">${z.score}</div>
+      <div class="zc-label" style="color:${z.color}">${z.label}</div>
+    </div>`).join('');
+}
+renderZones();
+
+// ─── UI: Timeline ────────────────────────────────────────────────
+function renderTimeline(){
+  const hours=Array.from({length:24},(_,i)=>i);
+  const values=hours.map(h=>{
+    const base=[2,1,1,1,2,3,8,15,20,18,14,16,19,21,18,17,22,25,28,24,20,16,12,7];
+    return base[h]+randInt(-2,2);
+  });
+  const max=Math.max(...values);
+  const colors=values.map(v=>v/max>0.75?'var(--red)':v/max>0.5?'var(--orange)':v/max>0.25?'var(--yellow)':'var(--cyan)');
+  const chart=document.getElementById('tlChart');
+  chart.innerHTML=values.map((v,i)=>`
+    <div class="tl-bar" style="height:${(v/max*100)}%;background:${colors[i]};box-shadow:0 0 8px ${colors[i]}60;opacity:${i===new Date().getHours()?1:0.6}">
+      <div class="tl-tip">${String(i).padStart(2,'0')}:00 · ${v} inc</div>
+    </div>`).join('');
+  const lblEl=document.getElementById('tlLabels');
+  lblEl.innerHTML=['00','06','12','18','24'].map(l=>`<span>${l}</span>`).join('');
+}
+renderTimeline();
+
+// ─── CANVAS MAP ──────────────────────────────────────────────────
+const canvas=document.getElementById('cityCanvas');
+const ctx=canvas.getContext('2d');
+let offscreenHeat=null;
+
+function resizeCanvas(){
+  const area=document.getElementById('mapArea');
+  canvas.width=area.offsetWidth;
+  canvas.height=area.offsetHeight;
+  offscreenHeat=null;
+  drawMap();
+}
+
+function drawMap(){
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle='#080c14';
+  ctx.fillRect(0,0,W,H);
+
+  // City grid - streets
+  ctx.strokeStyle='rgba(0,200,255,0.08)';
+  ctx.lineWidth=1;
+  const cols=12, rows=10;
+  for(let i=0;i<=cols;i++){
+    ctx.beginPath(); ctx.moveTo(i*(W/cols),0); ctx.lineTo(i*(W/cols),H); ctx.stroke();
+  }
+  for(let j=0;j<=rows;j++){
+    ctx.beginPath(); ctx.moveTo(0,j*(H/rows)); ctx.lineTo(W,j*(H/rows)); ctx.stroke();
+  }
+
+  // Major roads
+  const roads=[
+    [0,H*0.3,W,H*0.3],[0,H*0.6,W,H*0.6],
+    [W*0.25,0,W*0.25,H],[W*0.6,0,W*0.6,H],[W*0.8,0,W*0.8,H],
+    [0,H*0.45,W*0.4,H*0.45],[W*0.4,H*0.15,W*0.8,H*0.45],
+  ];
+  ctx.strokeStyle='rgba(0,200,255,0.18)';
+  ctx.lineWidth=2;
+  roads.forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+
+  // Blocks
+  const blocks=[
+    [W*0.28,H*0.08,W*0.3,H*0.28],[W*0.63,H*0.05,W*0.15,H*0.22],
+    [W*0.05,H*0.05,W*0.18,H*0.23],[W*0.05,H*0.35,W*0.18,H*0.12],
+    [W*0.28,H*0.34,W*0.3,H*0.24],[W*0.63,H*0.32,W*0.15,H*0.26],
+    [W*0.05,H*0.65,W*0.18,H*0.28],[W*0.28,H*0.65,W*0.3,H*0.28],
+    [W*0.63,H*0.65,W*0.15,H*0.28],
+  ];
+  blocks.forEach(([x,y,w,h])=>{
+    ctx.fillStyle='rgba(13,20,32,0.8)';
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle='rgba(0,200,255,0.06)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(x,y,w,h);
+  });
+
+  if(mapMode==='heat' || mapMode==='ai') drawHeatmap();
+  if(mapMode==='dots' || mapMode==='heat') drawDots();
+  if(mapMode==='zones') drawZoneOverlay();
+  if(mapMode==='ai') drawAIPrediction();
+
+  drawWaterFeature(W,H);
+}
+
+function drawHeatmap(){
+  const W=canvas.width, H=canvas.height;
+  // Draw heat blobs for incidents
+  incidents.forEach(inc=>{
+    const x=inc.x*W, y=inc.y*H;
+    const intensity={critical:1,high:0.7,medium:0.45,low:0.25}[inc.severity];
+    const color={critical:'255,45,85',high:'255,107,0',medium:'255,224,51',low:'0,255,136'}[inc.severity];
+    const r=60*intensity*zoomLevel;
+    const grad=ctx.createRadialGradient(x,y,0,x,y,r);
+    grad.addColorStop(0,`rgba(${color},${0.35*intensity})`);
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  });
+}
+
+function drawDots(){
+  const W=canvas.width, H=canvas.height;
+  incidents.forEach((inc,i)=>{
+    const x=inc.x*W, y=inc.y*H;
+    const color={critical:'#ff2d55',high:'#ff6b00',medium:'#ffe033',low:'#00ff88'}[inc.severity];
+    const age=(Date.now()-inc.ts)/3600000;
+    const alpha=Math.max(0.3,1-age*0.5);
+
+    // Pulse ring
+    const pulseSz=(Math.sin(tickCount*0.05+i)*0.5+0.5)*8+4;
+    ctx.strokeStyle=color+'80';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(x,y,pulseSz,0,Math.PI*2); ctx.stroke();
+
+    // Dot
+    ctx.fillStyle=color;
+    ctx.globalAlpha=alpha;
+    ctx.shadowColor=color;
+    ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.shadowBlur=0;
+  });
+}
+
+function drawZoneOverlay(){
+  const W=canvas.width, H=canvas.height;
+  const zones=[
+    {x:0.02,y:0.04,w:0.23,h:0.28,name:'NORTHGATE',risk:61,color:'#ff6b00'},
+    {x:0.27,y:0.04,w:0.32,h:0.28,name:'DOWNTOWN',risk:45,color:'#ffe033'},
+    {x:0.62,y:0.04,w:0.36,h:0.28,name:'EASTSIDE',risk:34,color:'#ffe033'},
+    {x:0.02,y:0.33,w:0.23,h:0.29,name:'WESTPARK',risk:18,color:'#00ff88'},
+    {x:0.27,y:0.33,w:0.32,h:0.29,name:'MIDTOWN',risk:45,color:'#ffe033'},
+    {x:0.62,y:0.33,w:0.36,h:0.29,name:'COMMERCE',risk:78,color:'#ff6b00'},
+    {x:0.02,y:0.63,w:0.56,h:0.34,name:'RIVERSIDE',risk:30,color:'#00c8ff'},
+    {x:0.62,y:0.63,w:0.36,h:0.34,name:'HARBOR',risk:92,color:'#ff2d55'},
+  ];
+  zones.forEach(z=>{
+    ctx.fillStyle=z.color+'18';
+    ctx.strokeStyle=z.color+'60';
+    ctx.lineWidth=1.5;
+    ctx.fillRect(z.x*W,z.y*H,z.w*W,z.h*H);
+    ctx.strokeRect(z.x*W,z.y*H,z.w*W,z.h*H);
+    ctx.fillStyle=z.color;
+    ctx.font='bold 11px Space Mono, monospace';
+    ctx.fillText(z.name,z.x*W+8,z.y*H+16);
+    ctx.font='bold 18px Bebas Neue, cursive';
+    ctx.fillText(z.risk,z.x*W+8,z.y*H+38);
+  });
+}
+
+function drawAIPrediction(){
+  const W=canvas.width, H=canvas.height;
+  // Draw prediction hotspots
+  const hotspots=[
+    {x:0.75,y:0.75,r:70,conf:0.87,color:'255,45,85',label:'HIGH RISK'},
+    {x:0.42,y:0.42,r:50,conf:0.71,color:'255,107,0',label:'ELEVATED'},
+    {x:0.2,y:0.2,r:40,conf:0.54,color:'255,224,51',label:'MODERATE'},
+  ];
+  hotspots.forEach(h=>{
+    // Dashed prediction ring
+    ctx.setLineDash([4,4]);
+    ctx.strokeStyle=`rgba(${h.color},0.6)`;
+    ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(h.x*W,h.y*H,h.r,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Label
+    ctx.fillStyle=`rgba(${h.color},0.9)`;
+    ctx.font='bold 9px Space Mono, monospace';
+    ctx.fillText(`${h.label} ${Math.round(h.conf*100)}%`,h.x*W-30,h.y*H-h.r-6);
+  });
+}
+
+function drawWaterFeature(W,H){
+  ctx.fillStyle='rgba(0,100,180,0.12)';
+  ctx.strokeStyle='rgba(0,200,255,0.15)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(W*0.62,H*0.72);
+  ctx.bezierCurveTo(W*0.75,H*0.68,W*0.85,H*0.76,W,H*0.73);
+  ctx.lineTo(W,H); ctx.lineTo(W*0.62,H);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle='rgba(0,200,255,0.07)';
+  ctx.font='bold 11px Space Mono, monospace';
+  ctx.fillStyle='rgba(0,200,255,0.3)';
+  ctx.fillText('HARBOR BAY',W*0.72,H*0.9);
+}
+
+// Map hover
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)/rect.width;
+  const my=(e.clientY-rect.top)/rect.height;
+  const tip=document.getElementById('mapTooltip');
+  let nearest=null, minDist=Infinity;
+  incidents.forEach(inc=>{
+    const d=Math.hypot(inc.x-mx,inc.y-my);
+    if(d<minDist){minDist=d;nearest=inc;}
+  });
+  if(minDist<0.06){
+    tip.style.display='block';
+    tip.style.left=(e.clientX-canvas.getBoundingClientRect().left+12)+'px';
+    tip.style.top=(e.clientY-canvas.getBoundingClientRect().top-40)+'px';
+    document.getElementById('tt-zone').textContent=nearest.zone.toUpperCase();
+    document.getElementById('tt-inc').textContent=nearest.type;
+    document.getElementById('tt-risk').textContent=nearest.severity.toUpperCase();
+    document.getElementById('tt-trend').textContent=timeSince(nearest.ts);
+  } else {
+    tip.style.display='none';
+  }
+});
+canvas.addEventListener('click',e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)/rect.width;
+  const my=(e.clientY-rect.top)/rect.height;
+  let nearest=null, minDist=Infinity;
+  incidents.forEach(inc=>{
+    const d=Math.hypot(inc.x-mx,inc.y-my);
+    if(d<minDist){minDist=d;nearest=inc;}
+  });
+  if(minDist<0.06) showIncidentModal(nearest.id);
+});
+
+// Animate
+function animate(){
+  tickCount++;
+  drawMap();
+  animFrame=requestAnimationFrame(animate);
+}
+window.addEventListener('resize',resizeCanvas);
+setTimeout(()=>{resizeCanvas();animate();},2600);
+
+// ─── CONTROLS ─────────────────────────────────────────────────────
+function setMapMode(mode,btn){
+  mapMode=mode;
+  document.querySelectorAll('.map-ctrl-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function zoomIn(){ zoomLevel=Math.min(2.5,zoomLevel+0.3); }
+function zoomOut(){ zoomLevel=Math.max(0.4,zoomLevel-0.3); }
+function toggleChip(el){
+  el.classList.toggle('active');
+}
+function focusZone(name){ console.log('Focus zone',name); }
+function updateCity(v){ console.log('City',v); }
+
+// ─── MODAL ────────────────────────────────────────────────────────
+function showIncidentModal(id){
+  const inc=incidents.find(i=>i.id===id);
+  if(!inc)return;
+  document.getElementById('modal-icon').textContent=inc.icon;
+  document.getElementById('modal-title').textContent=inc.type.toUpperCase();
+  document.getElementById('modal-id').textContent=inc.id+' · '+timeSince(inc.ts);
+  const sevColor={critical:'var(--red)',high:'var(--orange)',medium:'var(--yellow)',low:'var(--green)'}[inc.severity];
+  document.getElementById('modal-details').innerHTML=`
+    <div class="detail-item"><div class="di-label">LOCATION</div><div class="di-value">${inc.street}</div></div>
+    <div class="detail-item"><div class="di-label">DISTRICT</div><div class="di-value">${inc.zone}</div></div>
+    <div class="detail-item"><div class="di-label">SEVERITY</div><div class="di-value" style="color:${sevColor}">${inc.severity.toUpperCase()}</div></div>
+    <div class="detail-item"><div class="di-label">UNITS ON SCENE</div><div class="di-value">${inc.units||'None dispatched'}</div></div>
+    <div class="detail-item"><div class="di-label">COORDINATES</div><div class="di-value">${inc.lat}°N, ${inc.lng}°W</div></div>
+    <div class="detail-item"><div class="di-label">REPORTED</div><div class="di-value">${timeSince(inc.ts)}</div></div>
+  `;
+  // Mini map
+  const mc=document.getElementById('miniMapCanvas');
+  const mw=mc.parentElement.offsetWidth-2;
+  mc.width=mw; mc.height=118;
+  const mctx=mc.getContext('2d');
+  mctx.fillStyle='#080c14';mctx.fillRect(0,0,mw,118);
+  mctx.strokeStyle='rgba(0,200,255,0.06)';
+  for(let i=0;i<8;i++){mctx.beginPath();mctx.moveTo(i*mw/8,0);mctx.lineTo(i*mw/8,118);mctx.stroke();}
+  for(let i=0;i<5;i++){mctx.beginPath();mctx.moveTo(0,i*24);mctx.lineTo(mw,i*24);mctx.stroke();}
+  const cx=inc.x*mw, cy=inc.y*118;
+  const sevColor2={critical:'#ff2d55',high:'#ff6b00',medium:'#ffe033',low:'#00ff88'}[inc.severity];
+  const grad=mctx.createRadialGradient(cx,cy,0,cx,cy,40);
+  grad.addColorStop(0,sevColor2+'50'); grad.addColorStop(1,'transparent');
+  mctx.fillStyle=grad; mctx.beginPath(); mctx.arc(cx,cy,40,0,Math.PI*2); mctx.fill();
+  mctx.fillStyle=sevColor2; mctx.beginPath(); mctx.arc(cx,cy,5,0,Math.PI*2); mctx.fill();
+  mctx.strokeStyle=sevColor2+'80'; mctx.lineWidth=1.5; mctx.beginPath(); mctx.arc(cx,cy,14,0,Math.PI*2); mctx.stroke();
+  mctx.fillStyle='rgba(0,200,255,0.4)'; mctx.font='10px Space Mono,monospace';
+  mctx.fillText(inc.lat+'°N, '+inc.lng+'°W',6,112);
+
+  document.getElementById('incidentModal').classList.add('open');
+}
+function closeModal(){ document.getElementById('incidentModal').classList.remove('open'); }
+
+// ─── ALERT ────────────────────────────────────────────────────────
+function triggerAlert(){
+  document.getElementById('alertModal').classList.add('show');
+  setTimeout(()=>document.getElementById('alertModal').classList.remove('show'),6000);
+}
+function closeAlert(){ document.getElementById('alertModal').classList.remove('show'); }
+setTimeout(triggerAlert, 3800);
+
+// ─── LIVE UPDATES ─────────────────────────────────────────────────
+function addLiveIncident(){
+  incidents.unshift(genIncident());
+  if(incidents.length>60) incidents.pop();
+  renderIncidents();
+  buildTicker();
+  const n=parseInt(document.getElementById('statToday').textContent)+1;
+  document.getElementById('statToday').textContent=n;
+}
+setInterval(addLiveIncident,5000+Math.random()*4000);
+
+// Refresh timeline
+setInterval(renderTimeline,30000);
+</script>
+</body>
+</html>
